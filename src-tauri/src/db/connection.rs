@@ -36,6 +36,8 @@ impl Database {
 
         run_migrations(&conn)?;
 
+        crate::settings::defaults::seed_defaults_if_empty(&conn)?;
+
         info!("Database initialized successfully");
 
         Ok(Self {

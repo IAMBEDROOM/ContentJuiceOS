@@ -1,6 +1,6 @@
 mod connection;
-mod error;
-mod migration;
+pub mod error;
+pub(crate) mod migration;
 
 pub use connection::Database;
 #[allow(unused_imports)]
