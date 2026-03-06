@@ -14,37 +14,57 @@ function parsePort(args: string[]): number {
   return 4849;
 }
 
-const port = parsePort(process.argv);
+const preferredPort = parsePort(process.argv);
+const MAX_PORT_RETRIES = 10;
 
-const httpServer = createServer();
-const io = new Server(httpServer, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
-  transports: ["websocket", "polling"],
-});
-
-const overlaysNsp = io.of("/overlays");
-const controlNsp = io.of("/control");
-registerOverlaysNamespace(overlaysNsp);
-registerControlNamespace(controlNsp, overlaysNsp);
-
-httpServer.listen(port, "127.0.0.1", () => {
-  // Rust sidecar manager watches for this exact line
-  console.log(`READY:${port}`);
-});
-
-function shutdown() {
-  console.log("Shutting down Socket.IO server...");
-  io.close(() => {
-    httpServer.close(() => {
-      process.exit(0);
-    });
+function startServer(port: number, attempt: number): void {
+  const httpServer = createServer();
+  const io = new Server(httpServer, {
+    cors: {
+      origin: "*",
+      methods: ["GET", "POST"],
+    },
+    transports: ["websocket", "polling"],
   });
-  // Force exit after 3 seconds if graceful shutdown hangs
-  setTimeout(() => process.exit(0), 3000);
+
+  const overlaysNsp = io.of("/overlays");
+  const controlNsp = io.of("/control");
+  registerOverlaysNamespace(overlaysNsp);
+  registerControlNamespace(controlNsp, overlaysNsp);
+
+  httpServer.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE" && attempt < MAX_PORT_RETRIES) {
+      const nextPort = port + 1;
+      console.error(`Port ${port} in use, retrying on ${nextPort}...`);
+      io.close();
+      startServer(nextPort, attempt + 1);
+    } else {
+      console.error(`Fatal server error: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+  httpServer.listen(port, "127.0.0.1", () => {
+    // Rust sidecar manager watches for this exact line
+    console.log(`READY:${port}`);
+  });
+
+  setupShutdown(io, httpServer);
 }
 
-process.on("SIGTERM", shutdown);
-process.on("SIGINT", shutdown);
+function setupShutdown(io: Server, httpServer: ReturnType<typeof createServer>): void {
+  function shutdown() {
+    console.log("Shutting down Socket.IO server...");
+    io.close(() => {
+      httpServer.close(() => {
+        process.exit(0);
+      });
+    });
+    setTimeout(() => process.exit(0), 3000);
+  }
+
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
+}
+
+startServer(preferredPort, 0);
