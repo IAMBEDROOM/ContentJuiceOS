@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from '@tauri-apps/api/core';
 import {
   GeneralSettingsSchema,
   AppearanceSettingsSchema,
@@ -14,15 +14,9 @@ import {
   type AlertQueueSettings,
   type CacheTtlSettings,
   type AppConfig,
-} from "../types/config";
+} from '../types/config';
 
-type SectionName =
-  | "general"
-  | "appearance"
-  | "server"
-  | "obs"
-  | "alertQueue"
-  | "cacheTtl";
+type SectionName = 'general' | 'appearance' | 'server' | 'obs' | 'alertQueue' | 'cacheTtl';
 
 type SectionTypeMap = {
   general: GeneralSettings;
@@ -45,7 +39,7 @@ const sectionSchemas = {
 export async function getConfigSection<S extends SectionName>(
   section: S,
 ): Promise<SectionTypeMap[S]> {
-  const raw = await invoke("get_config_section", { section });
+  const raw = await invoke('get_config_section', { section });
   return sectionSchemas[section].parse(raw) as SectionTypeMap[S];
 }
 
@@ -53,10 +47,10 @@ export async function setConfigSection<S extends SectionName>(
   section: S,
   data: SectionTypeMap[S],
 ): Promise<void> {
-  await invoke("set_config_section", { section, data });
+  await invoke('set_config_section', { section, data });
 }
 
 export async function getFullConfig(): Promise<AppConfig> {
-  const raw = await invoke("get_full_config");
+  const raw = await invoke('get_full_config');
   return AppConfigSchema.parse(raw);
 }

@@ -37,3 +37,43 @@
   border-radius: 50%;
   background-color: #22c55e;
 }
+
+.socketio-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.ping-button {
+  padding: 8px 24px;
+  border: none;
+  border-radius: 6px;
+  background-color: var(--color-accent-primary, #00e5ff);
+  color: var(--color-bg-primary, #0a0d14);
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.ping-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pong-log {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #888);
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.pong-entry {
+  padding: 4px 12px;
+  background-color: var(--color-bg-surface, #151a26);
+  border-radius: 4px;
+}

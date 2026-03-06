@@ -37,3 +37,10 @@ coverage/
 ffmpeg/
 ffmpeg.exe
 ffprobe.exe
+
+# Sidecar binaries (built from source)
+src-tauri/binaries/
+
+# Sidecar build artifacts
+sidecar/socket-io-server/dist/
+sidecar/socket-io-server/node_modules/

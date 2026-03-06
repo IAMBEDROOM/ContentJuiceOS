@@ -47,9 +47,15 @@ impl BackupScheduler {
                             [],
                             |row| row.get(0),
                         )
-                        .and_then(|v: String| v.parse::<i64>().map_err(|e| {
-                            rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))
-                        }))
+                        .and_then(|v: String| {
+                            v.parse::<i64>().map_err(|e| {
+                                rusqlite::Error::FromSqlConversionFailure(
+                                    0,
+                                    rusqlite::types::Type::Text,
+                                    Box::new(e),
+                                )
+                            })
+                        })
                         .unwrap_or(24);
 
                     let max: u32 = conn
@@ -58,9 +64,15 @@ impl BackupScheduler {
                             [],
                             |row| row.get(0),
                         )
-                        .and_then(|v: String| v.parse::<u32>().map_err(|e| {
-                            rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))
-                        }))
+                        .and_then(|v: String| {
+                            v.parse::<u32>().map_err(|e| {
+                                rusqlite::Error::FromSqlConversionFailure(
+                                    0,
+                                    rusqlite::types::Type::Text,
+                                    Box::new(e),
+                                )
+                            })
+                        })
                         .unwrap_or(7);
 
                     (interval, max)

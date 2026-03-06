@@ -1,15 +1,15 @@
-import { z } from "zod";
-import { PlatformSchema } from "./platform";
-import { AlertTypeSchema } from "./events";
+import { z } from 'zod';
+import { PlatformSchema } from './platform';
+import { AlertTypeSchema } from './events';
 
 // ── General Settings ─────────────────────────────────────────────────
 
 export const GeneralSettingsSchema = z.object({
-  language: z.string().default("en"),
+  language: z.string().default('en'),
   launchOnStartup: z.boolean().default(false),
   minimizeToTray: z.boolean().default(true),
   checkForUpdates: z.boolean().default(true),
-  mediaDirectory: z.string().default(""),
+  mediaDirectory: z.string().default(''),
   backupIntervalHours: z.number().int().positive().default(24),
   maxBackups: z.number().int().positive().default(7),
 });
@@ -34,9 +34,9 @@ export type ServerSettings = z.infer<typeof ServerSettingsSchema>;
 // ── OBS Settings ─────────────────────────────────────────────────────
 
 export const ObsSettingsSchema = z.object({
-  host: z.string().default("localhost"),
+  host: z.string().default('localhost'),
   port: z.number().int().min(1).max(65535).default(4455),
-  password: z.string().default(""),
+  password: z.string().default(''),
   autoConnect: z.boolean().default(false),
 });
 export type ObsSettings = z.infer<typeof ObsSettingsSchema>;
@@ -46,7 +46,7 @@ export type ObsSettings = z.infer<typeof ObsSettingsSchema>;
 export const AlertConfigSchema = z.object({
   alertType: AlertTypeSchema,
   enabled: z.boolean().default(true),
-  enabledPlatforms: z.array(PlatformSchema).default(["twitch", "youtube", "kick"]),
+  enabledPlatforms: z.array(PlatformSchema).default(['twitch', 'youtube', 'kick']),
   minAmount: z.number().nonnegative().default(0),
   designId: z.string().uuid().optional(),
   duration: z.number().int().positive().default(5000),
@@ -58,11 +58,11 @@ export type AlertConfig = z.infer<typeof AlertConfigSchema>;
 
 // ── Alert Queue Settings ─────────────────────────────────────────────
 
-export const AlertQueueModeSchema = z.enum(["sequential", "priority"]);
+export const AlertQueueModeSchema = z.enum(['sequential', 'priority']);
 export type AlertQueueMode = z.infer<typeof AlertQueueModeSchema>;
 
 export const AlertQueueSettingsSchema = z.object({
-  mode: AlertQueueModeSchema.default("sequential"),
+  mode: AlertQueueModeSchema.default('sequential'),
   delayBetween: z.number().int().nonnegative().default(1000),
   maxQueueLength: z.number().int().positive().default(50),
   staleThreshold: z.number().int().positive().default(300000),
@@ -72,11 +72,11 @@ export type AlertQueueSettings = z.infer<typeof AlertQueueSettingsSchema>;
 // ── Bot Command ──────────────────────────────────────────────────────
 
 export const PermissionLevelSchema = z.enum([
-  "everyone",
-  "subscriber",
-  "vip",
-  "moderator",
-  "broadcaster",
+  'everyone',
+  'subscriber',
+  'vip',
+  'moderator',
+  'broadcaster',
 ]);
 export type PermissionLevel = z.infer<typeof PermissionLevelSchema>;
 
@@ -84,8 +84,8 @@ export const BotCommandSchema = z.object({
   trigger: z.string(),
   response: z.string(),
   cooldown: z.number().int().nonnegative().default(10),
-  permissionLevel: PermissionLevelSchema.default("everyone"),
-  platforms: z.array(PlatformSchema).default(["twitch", "youtube", "kick"]),
+  permissionLevel: PermissionLevelSchema.default('everyone'),
+  platforms: z.array(PlatformSchema).default(['twitch', 'youtube', 'kick']),
 });
 export type BotCommand = z.infer<typeof BotCommandSchema>;
 
@@ -105,7 +105,7 @@ export const AutoModSettingsSchema = z.object({
   capsFilter: z.boolean().default(false),
   spamFilter: z.boolean().default(false),
   bannedWords: z.array(z.string()).default([]),
-  enabledPlatforms: z.array(PlatformSchema).default(["twitch", "youtube", "kick"]),
+  enabledPlatforms: z.array(PlatformSchema).default(['twitch', 'youtube', 'kick']),
 });
 export type AutoModSettings = z.infer<typeof AutoModSettingsSchema>;
 
@@ -123,11 +123,11 @@ export type CacheTtlSettings = z.infer<typeof CacheTtlSettingsSchema>;
 
 export const AppConfigSchema = z.object({
   general: GeneralSettingsSchema.default({
-    language: "en",
+    language: 'en',
     launchOnStartup: false,
     minimizeToTray: true,
     checkForUpdates: true,
-    mediaDirectory: "",
+    mediaDirectory: '',
     backupIntervalHours: 24,
     maxBackups: 7,
   }),
@@ -140,13 +140,13 @@ export const AppConfigSchema = z.object({
     socketIoPort: 4849,
   }),
   obs: ObsSettingsSchema.default({
-    host: "localhost",
+    host: 'localhost',
     port: 4455,
-    password: "",
+    password: '',
     autoConnect: false,
   }),
   alertQueue: AlertQueueSettingsSchema.default({
-    mode: "sequential",
+    mode: 'sequential',
     delayBetween: 1000,
     maxQueueLength: 50,
     staleThreshold: 300000,

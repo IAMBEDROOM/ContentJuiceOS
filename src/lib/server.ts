@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from '@tauri-apps/api/core';
 
 export interface ServerInfo {
   port: number;
@@ -6,5 +6,5 @@ export interface ServerInfo {
 }
 
 export async function getServerInfo(): Promise<ServerInfo> {
-  return invoke("get_server_info");
+  return invoke('get_server_info');
 }

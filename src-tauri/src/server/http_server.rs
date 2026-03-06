@@ -66,7 +66,12 @@ impl HttpServer {
 
         let handle = thread::spawn(move || {
             let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
-            rt.block_on(run_server(configured_port, socket_io_port, shutdown_flag, tx));
+            rt.block_on(run_server(
+                configured_port,
+                socket_io_port,
+                shutdown_flag,
+                tx,
+            ));
         });
 
         let bound_port = rx
@@ -224,7 +229,9 @@ mod tests {
         let occupied_port = blocker.local_addr().unwrap().port();
         let socket_io_port = occupied_port + 1;
 
-        let listener = bind_with_fallback(occupied_port, socket_io_port).await.unwrap();
+        let listener = bind_with_fallback(occupied_port, socket_io_port)
+            .await
+            .unwrap();
         let bound_port = listener.local_addr().unwrap().port();
         assert_eq!(bound_port, occupied_port + 2);
     }

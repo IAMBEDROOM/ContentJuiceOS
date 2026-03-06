@@ -1,21 +1,21 @@
-import { z } from "zod";
-import { PlatformSchema } from "./platform";
+import { z } from 'zod';
+import { PlatformSchema } from './platform';
 
 // ── Alert Types ──────────────────────────────────────────────────────
 
 export const AlertTypeSchema = z.enum([
-  "follow",
-  "subscription",
-  "gift_sub",
-  "raid",
-  "bits",
-  "super_chat",
-  "super_sticker",
-  "donation",
+  'follow',
+  'subscription',
+  'gift_sub',
+  'raid',
+  'bits',
+  'super_chat',
+  'super_sticker',
+  'donation',
 ]);
 export type AlertType = z.infer<typeof AlertTypeSchema>;
 
-export const SubTierSchema = z.enum(["prime", "tier1", "tier2", "tier3"]);
+export const SubTierSchema = z.enum(['prime', 'tier1', 'tier2', 'tier3']);
 export type SubTier = z.infer<typeof SubTierSchema>;
 
 export const AlertEventSchema = z.object({
@@ -36,15 +36,15 @@ export const AlertEventSchema = z.object({
 export type AlertEvent = z.infer<typeof AlertEventSchema>;
 
 export const AlertVariableSchema = z.enum([
-  "username",
-  "displayName",
-  "amount",
-  "currency",
-  "message",
-  "subTier",
-  "giftCount",
-  "raidViewerCount",
-  "platform",
+  'username',
+  'displayName',
+  'amount',
+  'currency',
+  'message',
+  'subTier',
+  'giftCount',
+  'raidViewerCount',
+  'platform',
 ]);
 export type AlertVariable = z.infer<typeof AlertVariableSchema>;
 
@@ -86,15 +86,15 @@ export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 // ── Moderation ───────────────────────────────────────────────────────
 
 export const ModerationActionTypeSchema = z.enum([
-  "timeout",
-  "ban",
-  "unban",
-  "delete_message",
-  "slow_mode",
-  "followers_only",
-  "subscribers_only",
-  "emote_only",
-  "clear_chat",
+  'timeout',
+  'ban',
+  'unban',
+  'delete_message',
+  'slow_mode',
+  'followers_only',
+  'subscribers_only',
+  'emote_only',
+  'clear_chat',
 ]);
 export type ModerationActionType = z.infer<typeof ModerationActionTypeSchema>;
 
@@ -113,15 +113,15 @@ export type ModerationAction = z.infer<typeof ModerationActionSchema>;
 // ── OBS & Socket.IO ──────────────────────────────────────────────────
 
 export const ObsConnectionStatusSchema = z.enum([
-  "disconnected",
-  "connecting",
-  "connected",
-  "error",
+  'disconnected',
+  'connecting',
+  'connected',
+  'error',
 ]);
 export type ObsConnectionStatus = z.infer<typeof ObsConnectionStatusSchema>;
 
-export const StreamStatusSchema = z.enum(["offline", "live", "starting", "ending"]);
+export const StreamStatusSchema = z.enum(['offline', 'live', 'starting', 'ending']);
 export type StreamStatus = z.infer<typeof StreamStatusSchema>;
 
-export const SocketNamespaceSchema = z.enum(["/overlays", "/control"]);
+export const SocketNamespaceSchema = z.enum(['/overlays', '/control']);
 export type SocketNamespace = z.infer<typeof SocketNamespaceSchema>;

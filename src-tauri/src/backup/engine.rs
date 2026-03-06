@@ -124,7 +124,9 @@ fn validate_filename(filename: &str) -> DbResult<()> {
         || !filename.contains(BACKUP_PREFIX)
         || !filename.ends_with(BACKUP_EXT)
     {
-        return Err(DbError::Backup(format!("Invalid backup filename: {filename}")));
+        return Err(DbError::Backup(format!(
+            "Invalid backup filename: {filename}"
+        )));
     }
     Ok(())
 }
@@ -134,7 +136,9 @@ pub fn restore_backup(conn: &mut Connection, backup_dir: &Path, filename: &str) 
 
     let backup_path = backup_dir.join(filename);
     if !backup_path.exists() {
-        return Err(DbError::Backup(format!("Backup file not found: {filename}")));
+        return Err(DbError::Backup(format!(
+            "Backup file not found: {filename}"
+        )));
     }
 
     let source = Connection::open(&backup_path)?;
@@ -154,7 +158,9 @@ pub fn delete_backup(backup_dir: &Path, filename: &str) -> DbResult<()> {
 
     let path = backup_dir.join(filename);
     if !path.exists() {
-        return Err(DbError::Backup(format!("Backup file not found: {filename}")));
+        return Err(DbError::Backup(format!(
+            "Backup file not found: {filename}"
+        )));
     }
 
     fs::remove_file(path)?;

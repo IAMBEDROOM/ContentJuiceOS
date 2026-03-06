@@ -1,16 +1,16 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 // ── Platform & Connection ────────────────────────────────────────────
 
-export const PlatformSchema = z.enum(["twitch", "youtube", "kick"]);
+export const PlatformSchema = z.enum(['twitch', 'youtube', 'kick']);
 export type Platform = z.infer<typeof PlatformSchema>;
 
 export const ConnectionStatusSchema = z.enum([
-  "disconnected",
-  "connecting",
-  "connected",
-  "degraded",
-  "error",
+  'disconnected',
+  'connecting',
+  'connected',
+  'degraded',
+  'error',
 ]);
 export type ConnectionStatus = z.infer<typeof ConnectionStatusSchema>;
 
@@ -30,32 +30,25 @@ export type PlatformConnection = z.infer<typeof PlatformConnectionSchema>;
 
 // ── Asset Types & Formats ────────────────────────────────────────────
 
-export const AssetTypeSchema = z.enum([
-  "image",
-  "audio",
-  "video",
-  "font",
-  "animation",
-  "caption",
-]);
+export const AssetTypeSchema = z.enum(['image', 'audio', 'video', 'font', 'animation', 'caption']);
 export type AssetType = z.infer<typeof AssetTypeSchema>;
 
-export const ImageFormatSchema = z.enum(["png", "jpg", "jpeg", "gif", "webp", "svg"]);
+export const ImageFormatSchema = z.enum(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg']);
 export type ImageFormat = z.infer<typeof ImageFormatSchema>;
 
-export const AudioFormatSchema = z.enum(["mp3", "wav", "ogg", "flac", "aac"]);
+export const AudioFormatSchema = z.enum(['mp3', 'wav', 'ogg', 'flac', 'aac']);
 export type AudioFormat = z.infer<typeof AudioFormatSchema>;
 
-export const VideoFormatSchema = z.enum(["mp4", "webm", "mov", "mkv"]);
+export const VideoFormatSchema = z.enum(['mp4', 'webm', 'mov', 'mkv']);
 export type VideoFormat = z.infer<typeof VideoFormatSchema>;
 
-export const FontFormatSchema = z.enum(["ttf", "otf", "woff", "woff2"]);
+export const FontFormatSchema = z.enum(['ttf', 'otf', 'woff', 'woff2']);
 export type FontFormat = z.infer<typeof FontFormatSchema>;
 
-export const AnimationFormatSchema = z.enum(["json", "gif", "webp", "webm"]);
+export const AnimationFormatSchema = z.enum(['json', 'gif', 'webp', 'webm']);
 export type AnimationFormat = z.infer<typeof AnimationFormatSchema>;
 
-export const CaptionFormatSchema = z.enum(["srt", "vtt", "ass", "json"]);
+export const CaptionFormatSchema = z.enum(['srt', 'vtt', 'ass', 'json']);
 export type CaptionFormat = z.infer<typeof CaptionFormatSchema>;
 
 export const AssetSchema = z.object({

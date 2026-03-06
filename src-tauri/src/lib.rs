@@ -10,6 +10,7 @@ use tauri::Manager;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             let app_data_dir = app
                 .path()
@@ -21,15 +22,17 @@ pub fn run() {
 
             app.manage(database);
 
-            let scheduler = backup::BackupScheduler::start(
-                app.handle().clone(),
-                app_data_dir.clone(),
-            );
+            let scheduler =
+                backup::BackupScheduler::start(app.handle().clone(), app_data_dir.clone());
             app.manage(scheduler);
 
             let http_server = server::HttpServer::start(app.handle().clone())
                 .expect("Failed to start embedded HTTP server");
             app.manage(http_server);
+
+            let socket_io_server = server::SocketIoServer::start(app.handle())
+                .expect("Failed to start Socket.IO sidecar");
+            app.manage(socket_io_server);
 
             Ok(())
         })
@@ -42,6 +45,7 @@ pub fn run() {
             backup::commands::restore_backup,
             backup::commands::delete_backup,
             server::commands::get_server_info,
+            server::commands::get_socket_io_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
