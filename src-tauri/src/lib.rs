@@ -1,3 +1,4 @@
+mod backup;
 mod db;
 mod settings;
 
@@ -19,12 +20,22 @@ pub fn run() {
 
             app.manage(database);
 
+            let scheduler = backup::BackupScheduler::start(
+                app.handle().clone(),
+                app_data_dir.clone(),
+            );
+            app.manage(scheduler);
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             settings::commands::get_config_section,
             settings::commands::set_config_section,
             settings::commands::get_full_config,
+            backup::commands::create_backup,
+            backup::commands::list_backups,
+            backup::commands::restore_backup,
+            backup::commands::delete_backup,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

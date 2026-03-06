@@ -14,6 +14,9 @@ pub enum DbError {
     #[error("Settings error: {0}")]
     Settings(String),
 
+    #[error("Backup error: {0}")]
+    Backup(String),
+
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
 }
