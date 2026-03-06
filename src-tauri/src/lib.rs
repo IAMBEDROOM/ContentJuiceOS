@@ -1,5 +1,6 @@
 mod backup;
 mod db;
+mod server;
 mod settings;
 
 use db::Database;
@@ -26,6 +27,10 @@ pub fn run() {
             );
             app.manage(scheduler);
 
+            let http_server = server::HttpServer::start(app.handle().clone())
+                .expect("Failed to start embedded HTTP server");
+            app.manage(http_server);
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -36,6 +41,7 @@ pub fn run() {
             backup::commands::list_backups,
             backup::commands::restore_backup,
             backup::commands::delete_backup,
+            server::commands::get_server_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
