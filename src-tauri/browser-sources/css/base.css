@@ -1,0 +1,62 @@
+/* ContentJuiceOS Browser Source Base Styles */
+
+/* Reset */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Design Tokens */
+:root {
+  --bg-deep-space: #0A0D14;
+  --bg-charcoal-navy: #151A26;
+  --text-off-white: #E6EDF3;
+  --accent-cyan: #00E5FF;
+  --accent-magenta: #FF007F;
+  --accent-yellow: #FFD600;
+  --canvas-width: 1920px;
+  --canvas-height: 1080px;
+}
+
+body {
+  background: transparent;
+  width: var(--canvas-width);
+  height: var(--canvas-height);
+  overflow: hidden;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--text-off-white);
+}
+
+#render-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#status-indicator {
+  display: none;
+  position: fixed;
+  bottom: 8px;
+  right: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent-magenta);
+  z-index: 99999;
+  transition: background-color 0.3s ease;
+}
+
+#status-indicator.connected {
+  background: var(--accent-cyan);
+}
+
+#status-indicator.disconnected {
+  background: var(--accent-magenta);
+}
+
+#status-indicator.reconnecting {
+  background: var(--accent-yellow);
+}

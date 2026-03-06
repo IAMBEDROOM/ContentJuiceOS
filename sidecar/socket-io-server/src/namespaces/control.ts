@@ -1,6 +1,6 @@
 import type { Namespace } from "socket.io";
 
-export function registerControlNamespace(nsp: Namespace): void {
+export function registerControlNamespace(nsp: Namespace, overlaysNsp: Namespace): void {
   nsp.on("connection", (socket) => {
     console.log(`[control] client connected: ${socket.id}`);
 
@@ -15,6 +15,10 @@ export function registerControlNamespace(nsp: Namespace): void {
       } else {
         socket.emit("pong", response);
       }
+    });
+
+    socket.on("render", (data) => {
+      overlaysNsp.emit("render", data);
     });
 
     socket.on("disconnect", (reason) => {

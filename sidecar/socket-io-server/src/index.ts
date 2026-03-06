@@ -25,8 +25,10 @@ const io = new Server(httpServer, {
   transports: ["websocket", "polling"],
 });
 
-registerOverlaysNamespace(io.of("/overlays"));
-registerControlNamespace(io.of("/control"));
+const overlaysNsp = io.of("/overlays");
+const controlNsp = io.of("/control");
+registerOverlaysNamespace(overlaysNsp);
+registerControlNamespace(controlNsp, overlaysNsp);
 
 httpServer.listen(port, "127.0.0.1", () => {
   // Rust sidecar manager watches for this exact line
