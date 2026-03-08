@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Socket } from 'socket.io-client';
 import { getSocketIoInfo, connectToNamespace } from './lib/socket';
+import TwitchConnect from './components/TwitchConnect';
 import './App.css';
 
 interface PongResponse {
@@ -54,6 +55,8 @@ function App() {
         <span className="status-dot" />
         System Ready
       </div>
+
+      <TwitchConnect />
 
       <div className="socketio-section">
         <div className="status-pill">

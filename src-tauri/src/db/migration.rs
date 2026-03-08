@@ -113,6 +113,12 @@ CREATE TABLE IF NOT EXISTS secure_credentials (
 );
 ";
 
+const MIGRATION_V3_PLATFORM_UNIQUE: &str = "
+-- Enforce one connection per platform+user to enable upsert logic
+CREATE UNIQUE INDEX IF NOT EXISTS idx_platform_connections_platform_user
+ON platform_connections(platform, platform_user_id);
+";
+
 /// Returns all migrations in version order. New migrations are appended here by future tasks.
 pub fn all_migrations() -> &'static [Migration] {
     &[
@@ -125,6 +131,11 @@ pub fn all_migrations() -> &'static [Migration] {
             version: 2,
             name: "secure_credentials",
             sql: MIGRATION_V2_SECURE_CREDENTIALS,
+        },
+        Migration {
+            version: 3,
+            name: "platform_unique_index",
+            sql: MIGRATION_V3_PLATFORM_UNIQUE,
         },
     ]
 }
@@ -231,7 +242,7 @@ mod tests {
         let count: u32 = conn
             .query_row("SELECT COUNT(*) FROM _migrations", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(count, 2);
+        assert_eq!(count, 3);
     }
 
     #[test]
@@ -243,7 +254,7 @@ mod tests {
         let count: u32 = conn
             .query_row("SELECT COUNT(*) FROM _migrations", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(count, 2);
+        assert_eq!(count, 3);
     }
 
     #[test]
@@ -254,7 +265,7 @@ mod tests {
         let max_version: u32 = conn
             .query_row("SELECT MAX(version) FROM _migrations", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(max_version, 2);
+        assert_eq!(max_version, 3);
 
         // Running again should be a no-op
         run_migrations(&conn).unwrap();
@@ -262,7 +273,7 @@ mod tests {
         let count: u32 = conn
             .query_row("SELECT COUNT(*) FROM _migrations", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(count, 2);
+        assert_eq!(count, 3);
     }
 
     #[test]

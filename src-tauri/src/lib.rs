@@ -1,6 +1,7 @@
 mod backup;
 mod credentials;
 mod db;
+mod platform;
 mod server;
 mod settings;
 
@@ -35,8 +36,14 @@ pub fn run() {
                 backup::BackupScheduler::start(app.handle().clone(), app_data_dir.clone());
             app.manage(scheduler);
 
-            let http_server = server::HttpServer::start(app.handle().clone())
-                .expect("Failed to start embedded HTTP server");
+            // Create TwitchAuthState before HttpServer (server needs it for callback route)
+            let twitch_auth_state =
+                Arc::new(platform::twitch::oauth::TwitchAuthState::new());
+            app.manage(twitch_auth_state.clone());
+
+            let http_server =
+                server::HttpServer::start(app.handle().clone(), twitch_auth_state)
+                    .expect("Failed to start embedded HTTP server");
             app.manage(http_server);
 
             let socket_io_server = server::SocketIoServer::start(app.handle())
@@ -62,6 +69,12 @@ pub fn run() {
             credentials::commands::get_credential_backend,
             credentials::commands::store_platform_tokens,
             credentials::commands::get_platform_tokens,
+            platform::commands::get_platform_connections,
+            platform::commands::get_platform_connection,
+            platform::commands::disconnect_platform,
+            platform::twitch::commands::start_twitch_auth,
+            platform::twitch::commands::refresh_twitch_tokens,
+            platform::twitch::commands::revoke_twitch_auth,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

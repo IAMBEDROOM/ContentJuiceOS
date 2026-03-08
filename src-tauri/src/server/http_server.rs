@@ -4,21 +4,24 @@ use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
-use axum::extract::State;
+use axum::extract::{Query, State};
+use axum::response::Html;
 use axum::routing::get;
 use axum::{Json, Router};
-use log::info;
+use log::{error, info};
 use serde::Serialize;
 use tauri::Manager;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
 use crate::db::Database;
+use crate::platform::twitch::oauth::{OAuthCallbackParams, TwitchAuthState};
 
 #[derive(Clone)]
 struct AppState {
     port: u16,
     socket_io_port: u16,
+    auth_state: Arc<TwitchAuthState>,
 }
 
 #[derive(Serialize)]
@@ -41,7 +44,10 @@ pub struct HttpServer {
 }
 
 impl HttpServer {
-    pub fn start(app_handle: tauri::AppHandle) -> Result<Self, String> {
+    pub fn start(
+        app_handle: tauri::AppHandle,
+        auth_state: Arc<TwitchAuthState>,
+    ) -> Result<Self, String> {
         let (configured_port, socket_io_port) = {
             let db = app_handle.state::<Arc<Database>>();
             let conn = db.conn.lock().map_err(|e| e.to_string())?;
@@ -88,6 +94,7 @@ impl HttpServer {
                 browser_sources_path,
                 shutdown_flag,
                 tx,
+                auth_state,
             ));
         });
 
@@ -127,6 +134,7 @@ async fn run_server(
     browser_sources_path: PathBuf,
     shutdown: Arc<AtomicBool>,
     tx: std::sync::mpsc::Sender<Result<u16, String>>,
+    auth_state: Arc<TwitchAuthState>,
 ) {
     let listener = match bind_with_fallback(configured_port, socket_io_port).await {
         Ok(l) => l,
@@ -137,7 +145,7 @@ async fn run_server(
     };
 
     let bound_port = listener.local_addr().unwrap().port();
-    let router = build_router(bound_port, socket_io_port, browser_sources_path);
+    let router = build_router(bound_port, socket_io_port, browser_sources_path, auth_state);
 
     info!("HTTP server listening on http://127.0.0.1:{}", bound_port);
     let _ = tx.send(Ok(bound_port));
@@ -168,14 +176,21 @@ async fn bind_with_fallback(
     ))
 }
 
-fn build_router(port: u16, socket_io_port: u16, browser_sources_path: PathBuf) -> Router {
+fn build_router(
+    port: u16,
+    socket_io_port: u16,
+    browser_sources_path: PathBuf,
+    auth_state: Arc<TwitchAuthState>,
+) -> Router {
     let state = AppState {
         port,
         socket_io_port,
+        auth_state,
     };
     Router::new()
         .route("/health", get(health_handler))
         .route("/config", get(config_handler))
+        .route("/auth/callback/twitch", get(twitch_callback_handler))
         .nest_service("/browser-sources", ServeDir::new(browser_sources_path))
         .layer(CorsLayer::permissive())
         .with_state(state)
@@ -193,6 +208,93 @@ async fn config_handler(State(state): State<AppState>) -> Json<ConfigResponse> {
         http_port: state.port,
         socket_io_port: state.socket_io_port,
     })
+}
+
+async fn twitch_callback_handler(
+    Query(params): Query<OAuthCallbackParams>,
+    State(state): State<AppState>,
+) -> Html<String> {
+    let (title, message, accent_color) = if params.error.is_some() {
+        let error_desc = params
+            .error_description
+            .as_deref()
+            .unwrap_or("Authorization was denied or an error occurred.");
+        let _ = state
+            .auth_state
+            .complete_pending(Err(error_desc.to_string()))
+            .await;
+        (
+            "Authorization Failed",
+            format!("Twitch authorization was not completed: {error_desc}"),
+            "#FF007F", // Hyper Magenta
+        )
+    } else {
+        if let Err(e) = state.auth_state.complete_pending(Ok(params)).await {
+            error!("Failed to complete OAuth flow: {e}");
+            return Html(callback_html(
+                "Authorization Error",
+                "An internal error occurred. Please try again.",
+                "#FF007F",
+            ));
+        }
+        (
+            "Authorization Successful",
+            "You have been connected to Twitch! You can close this tab and return to ContentJuiceOS."
+                .to_string(),
+            "#00E5FF", // Electric Cyan
+        )
+    };
+
+    Html(callback_html(title, &message, accent_color))
+}
+
+fn callback_html(title: &str, message: &str, accent_color: &str) -> String {
+    format!(
+        r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ContentJuiceOS — {title}</title>
+    <style>
+        body {{
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #0A0D14;
+            color: #E6EDF3;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }}
+        .card {{
+            text-align: center;
+            padding: 48px;
+            background-color: #151A26;
+            border-radius: 12px;
+            border: 1px solid {accent_color}33;
+            max-width: 420px;
+        }}
+        h1 {{
+            color: {accent_color};
+            font-size: 1.5rem;
+            margin-bottom: 16px;
+        }}
+        p {{
+            color: #E6EDF3;
+            line-height: 1.6;
+            opacity: 0.85;
+        }}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>{title}</h1>
+        <p>{message}</p>
+    </div>
+</body>
+</html>"#
+    )
 }
 
 async fn shutdown_signal(shutdown: Arc<AtomicBool>) {
@@ -214,7 +316,12 @@ mod tests {
     use tower::ServiceExt;
 
     fn test_router() -> Router {
-        build_router(4848, 4849, PathBuf::from("nonexistent"))
+        build_router(
+            4848,
+            4849,
+            PathBuf::from("nonexistent"),
+            Arc::new(TwitchAuthState::new()),
+        )
     }
 
     #[tokio::test]
@@ -275,7 +382,7 @@ mod tests {
         let mut f = std::fs::File::create(&test_file).unwrap();
         f.write_all(b"<h1>test</h1>").unwrap();
 
-        let router = build_router(4848, 4849, tmp.clone());
+        let router = build_router(4848, 4849, tmp.clone(), Arc::new(TwitchAuthState::new()));
         let request = Request::builder()
             .uri("/browser-sources/test.html")
             .body(Body::empty())

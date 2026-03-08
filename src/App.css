@@ -77,3 +77,66 @@
   background-color: var(--color-bg-surface, #151a26);
   border-radius: 4px;
 }
+
+.twitch-connect {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 16px 24px;
+  background-color: var(--color-bg-surface, #151a26);
+  border-radius: 8px;
+  min-width: 280px;
+}
+
+.twitch-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.twitch-label {
+  font-weight: 600;
+  color: #9146FF;
+}
+
+.twitch-status {
+  opacity: 0.7;
+}
+
+.twitch-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.twitch-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.twitch-username {
+  font-weight: 600;
+}
+
+.twitch-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.twitch-waiting {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+.twitch-error {
+  font-size: 0.75rem;
+  color: #FF007F;
+  max-width: 300px;
+  text-align: center;
+}

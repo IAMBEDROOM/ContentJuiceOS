@@ -1,6 +1,9 @@
 use std::path::PathBuf;
 
 fn main() {
+    // Load .env file for compile-time environment variables (Twitch OAuth credentials, etc.)
+    load_dotenv();
+
     tauri_build::build();
 
     // In dev mode, Tauri's shell plugin resolves sidecars relative to the app executable
@@ -39,6 +42,38 @@ fn main() {
                         let _ = std::fs::copy(&src, &dev_dest);
                     }
                 }
+            }
+        }
+    }
+}
+
+/// Load environment variables from a `.env` file in the manifest directory.
+/// This enables `env!("TWITCH_CLIENT_ID")` etc. at compile time without
+/// requiring a runtime dotenv crate.
+fn load_dotenv() {
+    let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+    let env_file = manifest_dir.join(".env");
+
+    if !env_file.exists() {
+        // Not an error — CI uses actual env vars, not .env files
+        return;
+    }
+
+    // Re-run build script if .env changes
+    println!("cargo:rerun-if-changed=.env");
+
+    let contents = std::fs::read_to_string(&env_file).expect("Failed to read .env file");
+    for line in contents.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if let Some((key, value)) = line.split_once('=') {
+            let key = key.trim();
+            let value = value.trim();
+            // Only set if not already set (real env vars take precedence)
+            if std::env::var(key).is_err() {
+                println!("cargo:rustc-env={key}={value}");
             }
         }
     }
