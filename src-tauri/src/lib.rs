@@ -1,7 +1,10 @@
 mod backup;
+mod credentials;
 mod db;
 mod server;
 mod settings;
+
+use std::sync::Arc;
 
 use db::Database;
 use tauri::Manager;
@@ -17,8 +20,14 @@ pub fn run() {
                 .app_data_dir()
                 .expect("Failed to resolve app data directory");
 
-            let database = Database::initialize(&app_data_dir)
-                .expect("Failed to initialize database — cannot start without a working database");
+            let database = Arc::new(
+                Database::initialize(&app_data_dir)
+                    .expect("Failed to initialize database — cannot start without a working database"),
+            );
+
+            let cred_manager =
+                credentials::CredentialManager::initialize(Arc::clone(&database));
+            app.manage(cred_manager);
 
             app.manage(database);
 
@@ -46,6 +55,13 @@ pub fn run() {
             backup::commands::delete_backup,
             server::commands::get_server_info,
             server::commands::get_socket_io_info,
+            credentials::commands::store_credential,
+            credentials::commands::get_credential,
+            credentials::commands::delete_credential,
+            credentials::commands::has_credential,
+            credentials::commands::get_credential_backend,
+            credentials::commands::store_platform_tokens,
+            credentials::commands::get_platform_tokens,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

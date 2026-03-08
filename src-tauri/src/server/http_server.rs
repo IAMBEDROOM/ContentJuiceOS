@@ -43,7 +43,7 @@ pub struct HttpServer {
 impl HttpServer {
     pub fn start(app_handle: tauri::AppHandle) -> Result<Self, String> {
         let (configured_port, socket_io_port) = {
-            let db = app_handle.state::<Database>();
+            let db = app_handle.state::<Arc<Database>>();
             let conn = db.conn.lock().map_err(|e| e.to_string())?;
 
             let http_port: u16 = conn

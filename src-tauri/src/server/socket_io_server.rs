@@ -5,6 +5,8 @@ use tauri::Manager;
 use tauri_plugin_shell::process::CommandChild;
 use tauri_plugin_shell::ShellExt;
 
+use std::sync::Arc;
+
 use crate::db::Database;
 
 pub struct SocketIoServer {
@@ -15,7 +17,7 @@ pub struct SocketIoServer {
 impl SocketIoServer {
     pub fn start(app_handle: &tauri::AppHandle) -> Result<Self, String> {
         let port = {
-            let db = app_handle.state::<Database>();
+            let db = app_handle.state::<Arc<Database>>();
             let conn = db.conn.lock().map_err(|e| e.to_string())?;
             conn.query_row(
                 "SELECT value FROM settings WHERE key = 'server.socketIoPort'",

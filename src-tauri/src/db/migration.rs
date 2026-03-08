@@ -103,13 +103,30 @@ CREATE INDEX idx_cache_type_key ON cache(cache_type, cache_key);
 CREATE UNIQUE INDEX idx_cache_type_key_platform ON cache(cache_type, cache_key, platform);
 ";
 
+const MIGRATION_V2_SECURE_CREDENTIALS: &str = "
+-- Encrypted credential fallback storage (only populated when OS keychain is unavailable)
+CREATE TABLE IF NOT EXISTS secure_credentials (
+    key        TEXT PRIMARY KEY,
+    value      TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+";
+
 /// Returns all migrations in version order. New migrations are appended here by future tasks.
 pub fn all_migrations() -> &'static [Migration] {
-    &[Migration {
-        version: 1,
-        name: "core_schema",
-        sql: MIGRATION_V1_CORE_SCHEMA,
-    }]
+    &[
+        Migration {
+            version: 1,
+            name: "core_schema",
+            sql: MIGRATION_V1_CORE_SCHEMA,
+        },
+        Migration {
+            version: 2,
+            name: "secure_credentials",
+            sql: MIGRATION_V2_SECURE_CREDENTIALS,
+        },
+    ]
 }
 
 /// Runs all pending migrations against the given connection.
@@ -214,7 +231,7 @@ mod tests {
         let count: u32 = conn
             .query_row("SELECT COUNT(*) FROM _migrations", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(count, 1);
+        assert_eq!(count, 2);
     }
 
     #[test]
@@ -226,7 +243,7 @@ mod tests {
         let count: u32 = conn
             .query_row("SELECT COUNT(*) FROM _migrations", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(count, 1);
+        assert_eq!(count, 2);
     }
 
     #[test]
@@ -237,7 +254,7 @@ mod tests {
         let max_version: u32 = conn
             .query_row("SELECT MAX(version) FROM _migrations", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(max_version, 1);
+        assert_eq!(max_version, 2);
 
         // Running again should be a no-op
         run_migrations(&conn).unwrap();
@@ -245,7 +262,38 @@ mod tests {
         let count: u32 = conn
             .query_row("SELECT COUNT(*) FROM _migrations", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(count, 1);
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn v2_creates_secure_credentials_table() {
+        let conn = Connection::open_in_memory().unwrap();
+        run_migrations(&conn).unwrap();
+
+        let exists: bool = conn
+            .query_row(
+                "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type = 'table' AND name = 'secure_credentials'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(exists, "secure_credentials table should exist after V2 migration");
+
+        // Verify we can insert and query
+        conn.execute(
+            "INSERT INTO secure_credentials (key, value) VALUES ('test_key', 'test_value')",
+            [],
+        )
+        .unwrap();
+
+        let value: String = conn
+            .query_row(
+                "SELECT value FROM secure_credentials WHERE key = 'test_key'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(value, "test_value");
     }
 
     #[test]

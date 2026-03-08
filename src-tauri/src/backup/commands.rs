@@ -1,6 +1,8 @@
 use tauri::{AppHandle, Manager, State};
 
 use super::engine::{self, BackupInfo};
+use std::sync::Arc;
+
 use crate::db::Database;
 
 fn backup_dir(app_handle: &AppHandle) -> Result<std::path::PathBuf, String> {
@@ -24,7 +26,7 @@ fn max_backups_setting(conn: &rusqlite::Connection) -> u32 {
 
 #[tauri::command]
 pub fn create_backup(
-    database: State<'_, Database>,
+    database: State<'_, Arc<Database>>,
     app_handle: AppHandle,
 ) -> Result<BackupInfo, String> {
     let backup_dir = backup_dir(&app_handle)?;
@@ -44,7 +46,7 @@ pub fn list_backups(app_handle: AppHandle) -> Result<Vec<BackupInfo>, String> {
 #[tauri::command]
 pub fn restore_backup(
     filename: String,
-    database: State<'_, Database>,
+    database: State<'_, Arc<Database>>,
     app_handle: AppHandle,
 ) -> Result<(), String> {
     let backup_dir = backup_dir(&app_handle)?;

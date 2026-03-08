@@ -31,7 +31,7 @@ impl BackupScheduler {
 
                 // Read settings
                 let (interval_hours, max_backups) = {
-                    let db = app_handle.state::<Database>();
+                    let db = app_handle.state::<Arc<Database>>();
                     let conn = match db.conn.lock() {
                         Ok(c) => c,
                         Err(e) => {
@@ -93,7 +93,7 @@ impl BackupScheduler {
                 };
 
                 if backup_due {
-                    let db = app_handle.state::<Database>();
+                    let db = app_handle.state::<Arc<Database>>();
                     let conn = match db.conn.lock() {
                         Ok(c) => c,
                         Err(e) => {
