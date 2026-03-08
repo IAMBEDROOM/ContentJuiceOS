@@ -16,12 +16,14 @@ use tower_http::services::ServeDir;
 
 use crate::db::Database;
 use crate::platform::twitch::oauth::{OAuthCallbackParams, TwitchAuthState};
+use crate::platform::youtube::oauth::YouTubeAuthState;
 
 #[derive(Clone)]
 struct AppState {
     port: u16,
     socket_io_port: u16,
     auth_state: Arc<TwitchAuthState>,
+    youtube_auth_state: Arc<YouTubeAuthState>,
 }
 
 #[derive(Serialize)]
@@ -47,6 +49,7 @@ impl HttpServer {
     pub fn start(
         app_handle: tauri::AppHandle,
         auth_state: Arc<TwitchAuthState>,
+        youtube_auth_state: Arc<YouTubeAuthState>,
     ) -> Result<Self, String> {
         let (configured_port, socket_io_port) = {
             let db = app_handle.state::<Arc<Database>>();
@@ -95,6 +98,7 @@ impl HttpServer {
                 shutdown_flag,
                 tx,
                 auth_state,
+                youtube_auth_state,
             ));
         });
 
@@ -135,6 +139,7 @@ async fn run_server(
     shutdown: Arc<AtomicBool>,
     tx: std::sync::mpsc::Sender<Result<u16, String>>,
     auth_state: Arc<TwitchAuthState>,
+    youtube_auth_state: Arc<YouTubeAuthState>,
 ) {
     let listener = match bind_with_fallback(configured_port, socket_io_port).await {
         Ok(l) => l,
@@ -145,7 +150,13 @@ async fn run_server(
     };
 
     let bound_port = listener.local_addr().unwrap().port();
-    let router = build_router(bound_port, socket_io_port, browser_sources_path, auth_state);
+    let router = build_router(
+        bound_port,
+        socket_io_port,
+        browser_sources_path,
+        auth_state,
+        youtube_auth_state,
+    );
 
     info!("HTTP server listening on http://127.0.0.1:{}", bound_port);
     let _ = tx.send(Ok(bound_port));
@@ -181,16 +192,19 @@ fn build_router(
     socket_io_port: u16,
     browser_sources_path: PathBuf,
     auth_state: Arc<TwitchAuthState>,
+    youtube_auth_state: Arc<YouTubeAuthState>,
 ) -> Router {
     let state = AppState {
         port,
         socket_io_port,
         auth_state,
+        youtube_auth_state,
     };
     Router::new()
         .route("/health", get(health_handler))
         .route("/config", get(config_handler))
         .route("/auth/callback/twitch", get(twitch_callback_handler))
+        .route("/auth/callback/youtube", get(youtube_callback_handler))
         .nest_service("/browser-sources", ServeDir::new(browser_sources_path))
         .layer(CorsLayer::permissive())
         .with_state(state)
@@ -240,6 +254,44 @@ async fn twitch_callback_handler(
         (
             "Authorization Successful",
             "You have been connected to Twitch! You can close this tab and return to ContentJuiceOS."
+                .to_string(),
+            "#00E5FF", // Electric Cyan
+        )
+    };
+
+    Html(callback_html(title, &message, accent_color))
+}
+
+async fn youtube_callback_handler(
+    Query(params): Query<OAuthCallbackParams>,
+    State(state): State<AppState>,
+) -> Html<String> {
+    let (title, message, accent_color) = if params.error.is_some() {
+        let error_desc = params
+            .error_description
+            .as_deref()
+            .unwrap_or("Authorization was denied or an error occurred.");
+        let _ = state
+            .youtube_auth_state
+            .complete_pending(Err(error_desc.to_string()))
+            .await;
+        (
+            "Authorization Failed",
+            format!("YouTube authorization was not completed: {error_desc}"),
+            "#FF007F", // Hyper Magenta
+        )
+    } else {
+        if let Err(e) = state.youtube_auth_state.complete_pending(Ok(params)).await {
+            error!("Failed to complete YouTube OAuth flow: {e}");
+            return Html(callback_html(
+                "Authorization Error",
+                "An internal error occurred. Please try again.",
+                "#FF007F",
+            ));
+        }
+        (
+            "Authorization Successful",
+            "You have been connected to YouTube! You can close this tab and return to ContentJuiceOS."
                 .to_string(),
             "#00E5FF", // Electric Cyan
         )
@@ -321,6 +373,7 @@ mod tests {
             4849,
             PathBuf::from("nonexistent"),
             Arc::new(TwitchAuthState::new()),
+            Arc::new(YouTubeAuthState::new()),
         )
     }
 
@@ -382,7 +435,13 @@ mod tests {
         let mut f = std::fs::File::create(&test_file).unwrap();
         f.write_all(b"<h1>test</h1>").unwrap();
 
-        let router = build_router(4848, 4849, tmp.clone(), Arc::new(TwitchAuthState::new()));
+        let router = build_router(
+            4848,
+            4849,
+            tmp.clone(),
+            Arc::new(TwitchAuthState::new()),
+            Arc::new(YouTubeAuthState::new()),
+        );
         let request = Request::builder()
             .uri("/browser-sources/test.html")
             .body(Body::empty())

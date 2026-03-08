@@ -1,0 +1,226 @@
+use std::sync::Arc;
+use std::time::Duration;
+
+use log::{error, info};
+use tauri::State;
+use tokio::sync::oneshot;
+
+use crate::credentials::store::CredentialManager;
+use crate::credentials::types::{CredentialKind, OAuthTokens};
+use crate::db::Database;
+use crate::platform::repository;
+use crate::platform::twitch::oauth::OAuthCallbackParams;
+use crate::platform::types::{NewPlatformConnection, PlatformConnection};
+use crate::server::HttpServer;
+
+use super::oauth::{self, YouTubeAuthState, YOUTUBE_SCOPES};
+
+/// Start the full YouTube/Google OAuth2 authorization code flow.
+///
+/// 1. Generates a CSRF state parameter
+/// 2. Opens the browser to Google's authorization page
+/// 3. Waits for the callback (up to 5 minutes)
+/// 4. Exchanges the code for tokens
+/// 5. Fetches the YouTube channel profile
+/// 6. Stores everything securely
+#[tauri::command]
+pub async fn start_youtube_auth(
+    auth_state: State<'_, Arc<YouTubeAuthState>>,
+    db: State<'_, Arc<Database>>,
+    cred_manager: State<'_, CredentialManager>,
+    http_server: State<'_, HttpServer>,
+) -> Result<PlatformConnection, String> {
+    let port = http_server.port();
+
+    // Google allows http://localhost with any port for native apps — no port range validation needed
+    let redirect_uri = format!("http://localhost:{port}/auth/callback/youtube");
+
+    // Generate PKCE code verifier + challenge
+    let code_verifier = oauth::generate_code_verifier();
+    let code_challenge = oauth::compute_code_challenge(&code_verifier);
+
+    // Generate cryptographic random state parameter (CSRF protection)
+    let state_param = generate_state();
+
+    // Create oneshot channel for callback → command communication
+    let (tx, rx) = oneshot::channel::<Result<OAuthCallbackParams, String>>();
+
+    // Register the pending flow
+    auth_state
+        .set_pending(state_param.clone(), tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Build the authorization URL and open the browser
+    let auth_url = oauth::build_authorize_url(&redirect_uri, &state_param, &code_challenge);
+    info!("Opening YouTube authorization URL in browser");
+
+    tauri_plugin_opener::open_url(&auth_url, None::<&str>)
+        .map_err(|e| format!("Failed to open browser: {e}"))?;
+
+    // Wait for the callback with a 5-minute timeout
+    let callback_result = tokio::time::timeout(Duration::from_secs(300), rx)
+        .await
+        .map_err(|_| "YouTube authorization timed out after 5 minutes".to_string())?
+        .map_err(|_| "Authorization flow was cancelled".to_string())?
+        .map_err(|e| format!("Authorization failed: {e}"))?;
+
+    // Check for errors from Google
+    if let Some(error) = &callback_result.error {
+        let desc = callback_result
+            .error_description
+            .as_deref()
+            .unwrap_or("Unknown error");
+        return Err(format!("Google denied authorization: {error} — {desc}"));
+    }
+
+    let code = callback_result
+        .code
+        .ok_or("No authorization code received from Google")?;
+
+    // Exchange the authorization code for tokens (PKCE: send code_verifier)
+    info!("Exchanging authorization code for YouTube tokens");
+    let token_response = oauth::exchange_code_for_tokens(&code, &redirect_uri, &code_verifier)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Fetch YouTube channel profile
+    info!("Fetching YouTube channel profile");
+    let channel = oauth::get_current_channel(&token_response.access_token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Calculate token expiry
+    let expires_at = chrono::Utc::now()
+        + chrono::Duration::seconds(token_response.expires_in as i64);
+
+    // Extract avatar URL from thumbnails
+    let avatar_url = channel
+        .snippet
+        .thumbnails
+        .default
+        .map(|t| t.url);
+
+    // Use custom_url (e.g. "@channelname") as the username, fallback to channel ID
+    let platform_username = channel
+        .snippet
+        .custom_url
+        .unwrap_or_else(|| channel.id.clone());
+
+    // Upsert the platform connection
+    let new_connection = NewPlatformConnection {
+        platform: "youtube".to_string(),
+        platform_user_id: channel.id.clone(),
+        platform_username,
+        display_name: channel.snippet.title.clone(),
+        avatar_url,
+        scopes: YOUTUBE_SCOPES.iter().map(|s| s.to_string()).collect(),
+    };
+
+    let connection = {
+        let conn = db.conn.lock().map_err(|e| e.to_string())?;
+        repository::upsert_connection(&conn, &new_connection).map_err(|e| e.to_string())?
+    };
+
+    // Store tokens securely
+    let tokens = OAuthTokens {
+        access_token: token_response.access_token,
+        refresh_token: token_response.refresh_token, // Already Option<String>
+        token_expires_at: Some(expires_at.to_rfc3339()),
+    };
+    cred_manager
+        .store_platform_tokens(&connection.id, &tokens)
+        .map_err(|e| e.to_string())?;
+
+    info!(
+        "YouTube connected: {} ({})",
+        connection.display_name, connection.platform_user_id
+    );
+
+    Ok(connection)
+}
+
+/// Refresh YouTube tokens for an existing connection.
+///
+/// **Critical Google difference:** The refresh response does NOT include a new
+/// refresh_token. We must preserve the original refresh_token.
+#[tauri::command]
+pub async fn refresh_youtube_tokens(
+    connection_id: String,
+    db: State<'_, Arc<Database>>,
+    cred_manager: State<'_, CredentialManager>,
+) -> Result<(), String> {
+    // Get existing tokens
+    let tokens = cred_manager
+        .get_platform_tokens(&connection_id)
+        .map_err(|e| e.to_string())?
+        .ok_or("No tokens found for this connection")?;
+
+    let refresh_token = tokens
+        .refresh_token
+        .ok_or("No refresh token available")?;
+
+    // Refresh — Google will return a new access_token but NO refresh_token
+    let new_tokens = oauth::refresh_access_token(&refresh_token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let expires_at = chrono::Utc::now()
+        + chrono::Duration::seconds(new_tokens.expires_in as i64);
+
+    // Preserve the original refresh_token — Google does NOT issue a new one on refresh
+    let updated = OAuthTokens {
+        access_token: new_tokens.access_token,
+        refresh_token: Some(refresh_token), // Keep the original
+        token_expires_at: Some(expires_at.to_rfc3339()),
+    };
+    cred_manager
+        .store_platform_tokens(&connection_id, &updated)
+        .map_err(|e| e.to_string())?;
+
+    // Update last_refreshed_at in DB
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    repository::update_last_refreshed(&conn, &connection_id).map_err(|e| e.to_string())?;
+
+    info!("Refreshed YouTube tokens for connection {connection_id}");
+    Ok(())
+}
+
+/// Revoke YouTube authorization and clean up stored tokens.
+#[tauri::command]
+pub async fn revoke_youtube_auth(
+    connection_id: String,
+    db: State<'_, Arc<Database>>,
+    cred_manager: State<'_, CredentialManager>,
+) -> Result<(), String> {
+    // Best-effort revocation — don't fail the whole operation if Google is unreachable
+    if let Ok(Some(tokens)) = cred_manager.get_platform_tokens(&connection_id) {
+        if let Err(e) = oauth::revoke_token(&tokens.access_token).await {
+            error!("Failed to revoke token with Google (continuing anyway): {e}");
+        }
+    }
+
+    // Delete tokens from credential store
+    let kind = CredentialKind::PlatformToken {
+        connection_id: connection_id.clone(),
+    };
+    cred_manager
+        .delete_credential(&kind)
+        .map_err(|e| e.to_string())?;
+
+    // Update status in DB
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    repository::update_connection_status(&conn, &connection_id, "revoked")
+        .map_err(|e| e.to_string())?;
+
+    info!("Revoked YouTube auth for connection {connection_id}");
+    Ok(())
+}
+
+/// Generate a cryptographic random state string for CSRF protection.
+fn generate_state() -> String {
+    use rand::Rng;
+    let mut rng = rand::thread_rng();
+    let bytes: [u8; 32] = rng.gen();
+    bytes.iter().map(|b| format!("{:02x}", b)).collect()
+}

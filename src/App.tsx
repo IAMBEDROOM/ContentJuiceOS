@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { Socket } from 'socket.io-client';
 import { getSocketIoInfo, connectToNamespace } from './lib/socket';
 import TwitchConnect from './components/TwitchConnect';
+import YouTubeConnect from './components/YouTubeConnect';
 import './App.css';
 
 interface PongResponse {
@@ -57,6 +58,7 @@ function App() {
       </div>
 
       <TwitchConnect />
+      <YouTubeConnect />
 
       <div className="socketio-section">
         <div className="status-pill">

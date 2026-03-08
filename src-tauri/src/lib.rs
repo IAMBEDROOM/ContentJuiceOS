@@ -36,14 +36,21 @@ pub fn run() {
                 backup::BackupScheduler::start(app.handle().clone(), app_data_dir.clone());
             app.manage(scheduler);
 
-            // Create TwitchAuthState before HttpServer (server needs it for callback route)
+            // Create auth states before HttpServer (server needs them for callback routes)
             let twitch_auth_state =
                 Arc::new(platform::twitch::oauth::TwitchAuthState::new());
             app.manage(twitch_auth_state.clone());
 
-            let http_server =
-                server::HttpServer::start(app.handle().clone(), twitch_auth_state)
-                    .expect("Failed to start embedded HTTP server");
+            let youtube_auth_state =
+                Arc::new(platform::youtube::oauth::YouTubeAuthState::new());
+            app.manage(youtube_auth_state.clone());
+
+            let http_server = server::HttpServer::start(
+                app.handle().clone(),
+                twitch_auth_state,
+                youtube_auth_state,
+            )
+            .expect("Failed to start embedded HTTP server");
             app.manage(http_server);
 
             let socket_io_server = server::SocketIoServer::start(app.handle())
@@ -75,6 +82,9 @@ pub fn run() {
             platform::twitch::commands::start_twitch_auth,
             platform::twitch::commands::refresh_twitch_tokens,
             platform::twitch::commands::revoke_twitch_auth,
+            platform::youtube::commands::start_youtube_auth,
+            platform::youtube::commands::refresh_youtube_tokens,
+            platform::youtube::commands::revoke_youtube_auth,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -54,3 +54,21 @@ export async function refreshTwitchTokens(
 export async function revokeTwitchAuth(connectionId: string): Promise<void> {
   await invoke('revoke_twitch_auth', { connectionId });
 }
+
+// ---------------------------------------------------------------------------
+// YouTube-specific
+// ---------------------------------------------------------------------------
+
+export async function startYouTubeAuth(): Promise<PlatformConnection> {
+  return invoke<PlatformConnection>('start_youtube_auth');
+}
+
+export async function refreshYouTubeTokens(
+  connectionId: string,
+): Promise<void> {
+  await invoke('refresh_youtube_tokens', { connectionId });
+}
+
+export async function revokeYouTubeAuth(connectionId: string): Promise<void> {
+  await invoke('revoke_youtube_auth', { connectionId });
+}
