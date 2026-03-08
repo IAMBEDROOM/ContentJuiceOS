@@ -18,7 +18,9 @@ pub const KICK_CLIENT_SECRET: &str = env!("KICK_CLIENT_SECRET");
 pub const KICK_AUTH_URL: &str = "https://id.kick.com/oauth/authorize";
 pub const KICK_TOKEN_URL: &str = "https://id.kick.com/oauth/token";
 pub const KICK_REVOKE_URL: &str = "https://id.kick.com/oauth/revoke";
-pub const KICK_INTROSPECT_URL: &str = "https://api.kick.com/token/introspect";
+#[allow(dead_code)]
+pub const KICK_INTROSPECT_URL: &str = "https://id.kick.com/oauth/token/introspect";
+pub const KICK_USERS_URL: &str = "https://api.kick.com/public/v1/users";
 
 /// Phase 1-2 scopes: user info, channel info, event subscriptions.
 /// Phase 3 will add chat scopes — users re-auth and the upsert handles it.
@@ -124,15 +126,22 @@ pub struct KickTokenResponse {
     pub token_type: String,
 }
 
-/// Response from Kick's token introspection endpoint.
-/// Used instead of a "get current user" endpoint (which Kick doesn't have).
+/// Kick user profile from `GET /public/v1/users`.
+/// When called with a valid User Access Token and no `id` param,
+/// returns the currently authenticated user.
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
-pub struct KickIntrospectResponse {
-    pub active: bool,
-    pub sub: Option<String>,
-    pub scope: Option<String>,
-    pub exp: Option<u64>,
+pub struct KickUser {
+    pub user_id: u64,
+    pub name: String,
+    pub email: Option<String>,
+    pub profile_picture: Option<String>,
+}
+
+/// Envelope wrapper — Kick wraps API responses in `{ "data": [...], "message": "..." }`.
+#[derive(Debug, Deserialize)]
+struct KickUsersResponse {
+    data: Vec<KickUser>,
 }
 
 // ---------------------------------------------------------------------------
@@ -246,14 +255,13 @@ pub async fn refresh_access_token(
         .map_err(|e| PlatformError::OAuth(format!("Failed to parse refresh response: {e}")))
 }
 
-/// Introspect a token to get user information.
-/// Kick has no "get current user by token" endpoint, so we use introspection
-/// to retrieve the `sub` field (user ID).
-pub async fn introspect_token(access_token: &str) -> PlatformResult<KickIntrospectResponse> {
+/// Fetch the current user's profile using a valid User Access Token.
+/// When no `id` query param is provided, Kick returns the authenticated user.
+pub async fn get_current_user(access_token: &str) -> PlatformResult<KickUser> {
     let client = reqwest::Client::new();
-    let url = format!("{}?access_token={}", KICK_INTROSPECT_URL, access_token);
     let response = client
-        .post(&url)
+        .get(KICK_USERS_URL)
+        .header("Authorization", format!("Bearer {access_token}"))
         .send()
         .await?;
 
@@ -261,22 +269,20 @@ pub async fn introspect_token(access_token: &str) -> PlatformResult<KickIntrospe
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
         return Err(PlatformError::OAuth(format!(
-            "Token introspection failed (HTTP {status}): {body}"
+            "Failed to fetch user (HTTP {status}): {body}"
         )));
     }
 
-    let introspect: KickIntrospectResponse = response
+    let users: KickUsersResponse = response
         .json()
         .await
-        .map_err(|e| PlatformError::OAuth(format!("Failed to parse introspect response: {e}")))?;
+        .map_err(|e| PlatformError::OAuth(format!("Failed to parse user response: {e}")))?;
 
-    if !introspect.active {
-        return Err(PlatformError::OAuth(
-            "Token is not active according to introspection".to_string(),
-        ));
-    }
-
-    Ok(introspect)
+    users
+        .data
+        .into_iter()
+        .next()
+        .ok_or_else(|| PlatformError::OAuth("No user returned from Kick API".to_string()))
 }
 
 /// Revoke an access token.

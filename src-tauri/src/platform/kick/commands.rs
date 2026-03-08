@@ -93,29 +93,23 @@ pub async fn start_kick_auth(
         .await
         .map_err(|e| e.to_string())?;
 
-    // Introspect the token to get user ID (Kick has no "get current user" endpoint)
-    info!("Introspecting Kick token for user info");
-    let introspect = oauth::introspect_token(&token_response.access_token)
+    // Fetch user profile
+    info!("Fetching Kick user profile");
+    let user = oauth::get_current_user(&token_response.access_token)
         .await
         .map_err(|e| e.to_string())?;
-
-    let user_id = introspect
-        .sub
-        .ok_or("Token introspection did not return a user ID (sub)")?;
 
     // Calculate token expiry
     let expires_at = chrono::Utc::now()
         + chrono::Duration::seconds(token_response.expires_in as i64);
 
     // Upsert the platform connection
-    // Note: Kick introspect only provides user ID, not username/display name.
-    // Username will be updated in Phase 3 when chat reveals it.
     let new_connection = NewPlatformConnection {
         platform: "kick".to_string(),
-        platform_user_id: user_id.clone(),
-        platform_username: user_id.clone(),
-        display_name: user_id.clone(),
-        avatar_url: None,
+        platform_user_id: user.user_id.to_string(),
+        platform_username: user.name.clone(),
+        display_name: user.name.clone(),
+        avatar_url: user.profile_picture.clone(),
         scopes: KICK_SCOPES.iter().map(|s| s.to_string()).collect(),
     };
 
