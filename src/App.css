@@ -1,4 +1,19 @@
-.app {
+/* ── App Layout ────────────────────────────────────────────────────── */
+
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.app-main {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ── Home Page ─────────────────────────────────────────────────────── */
+
+.home-page {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -7,27 +22,28 @@
   gap: 16px;
 }
 
-.app h1 {
+.home-page h1 {
   font-size: 2.5rem;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
-.app .subtitle {
+.home-page .subtitle {
   color: var(--color-accent-primary);
   font-size: 1.125rem;
   font-weight: 500;
 }
 
+/* ── Shared ────────────────────────────────────────────────────────── */
+
 .status-pill {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-top: 8px;
-  padding: 8px 20px;
+  padding: 6px 16px;
   background-color: var(--color-bg-surface);
   border-radius: 999px;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
 }
 
@@ -38,22 +54,55 @@
   background-color: #22c55e;
 }
 
+/* ── Nav ───────────────────────────────────────────────────────────── */
+
+.app-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 24px;
+  background-color: var(--color-bg-surface);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.app-nav a {
+  color: var(--color-text-primary);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.app-nav a:hover,
+.app-nav a.active {
+  opacity: 1;
+  color: var(--color-accent-primary);
+}
+
+.nav-spacer {
+  flex: 1;
+}
+
+/* ── Socket.IO Section ─────────────────────────────────────────────── */
+
 .socketio-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  margin-top: 16px;
+  gap: 8px;
+  padding: 8px 24px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .ping-button {
-  padding: 8px 24px;
+  padding: 6px 20px;
   border: none;
   border-radius: 6px;
   background-color: var(--color-accent-primary, #00e5ff);
   color: var(--color-bg-primary, #0a0d14);
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   cursor: pointer;
 }
 
@@ -68,7 +117,7 @@
   gap: 4px;
   font-size: 0.75rem;
   color: var(--color-text-secondary, #888);
-  max-height: 120px;
+  max-height: 100px;
   overflow-y: auto;
 }
 
@@ -76,67 +125,4 @@
   padding: 4px 12px;
   background-color: var(--color-bg-surface, #151a26);
   border-radius: 4px;
-}
-
-.twitch-connect {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  margin-top: 16px;
-  padding: 16px 24px;
-  background-color: var(--color-bg-surface, #151a26);
-  border-radius: 8px;
-  min-width: 280px;
-}
-
-.twitch-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.twitch-label {
-  font-weight: 600;
-  color: #9146FF;
-}
-
-.twitch-status {
-  opacity: 0.7;
-}
-
-.twitch-profile {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.twitch-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-}
-
-.twitch-username {
-  font-weight: 600;
-}
-
-.twitch-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.twitch-waiting {
-  font-size: 0.8rem;
-  opacity: 0.6;
-}
-
-.twitch-error {
-  font-size: 0.75rem;
-  color: #FF007F;
-  max-width: 300px;
-  text-align: center;
 }

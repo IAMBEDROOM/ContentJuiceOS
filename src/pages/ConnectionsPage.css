@@ -1,0 +1,205 @@
+/* ── Connections Page ──────────────────────────────────────────────── */
+
+.connections-page {
+  padding: 32px 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.connections-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+
+.connections-subtitle {
+  font-size: 0.875rem;
+  opacity: 0.6;
+  margin-bottom: 28px;
+}
+
+.connections-loading {
+  opacity: 0.5;
+  margin-top: 24px;
+}
+
+.connections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+/* ── Platform Card ────────────────────────────────────────────────── */
+
+.platform-card {
+  background-color: var(--color-bg-surface);
+  border-radius: 10px;
+  border-left: 3px solid transparent;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.platform-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.platform-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.platform-card-label {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.platform-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* ── Profile ──────────────────────────────────────────────────────── */
+
+.platform-card-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.platform-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.platform-card-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.platform-display-name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.platform-username {
+  font-size: 0.8125rem;
+  opacity: 0.5;
+}
+
+/* ── Details ──────────────────────────────────────────────────────── */
+
+.platform-card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.8125rem;
+}
+
+.platform-detail {
+  display: flex;
+  gap: 8px;
+}
+
+.platform-detail-label {
+  opacity: 0.5;
+  min-width: 100px;
+  flex-shrink: 0;
+}
+
+.platform-detail-value {
+  word-break: break-word;
+}
+
+/* ── Actions ──────────────────────────────────────────────────────── */
+
+.platform-card-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 7px 18px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn:hover {
+  opacity: 0.85;
+}
+
+.btn-connect {
+  background-color: var(--color-accent-primary);
+  color: var(--color-bg-primary);
+}
+
+.btn-disconnect {
+  background-color: var(--color-accent-secondary);
+  color: #fff;
+}
+
+.btn-revoke {
+  background-color: transparent;
+  color: var(--color-accent-secondary);
+  border: 1px solid var(--color-accent-secondary);
+}
+
+.btn-refresh {
+  background-color: var(--color-highlight);
+  color: var(--color-bg-primary);
+}
+
+.platform-authorizing {
+  font-size: 0.8125rem;
+  opacity: 0.6;
+}
+
+/* ── Error ─────────────────────────────────────────────────────────── */
+
+.platform-card-error {
+  font-size: 0.75rem;
+  color: var(--color-accent-secondary);
+  word-break: break-word;
+}
+
+/* ── Nav ───────────────────────────────────────────────────────────── */
+
+.app-nav {
+  display: flex;
+  gap: 16px;
+  padding: 12px 24px;
+  background-color: var(--color-bg-surface);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.app-nav a {
+  color: var(--color-text-primary);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.app-nav a:hover,
+.app-nav a.active {
+  opacity: 1;
+  color: var(--color-accent-primary);
+}

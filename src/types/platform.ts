@@ -6,11 +6,10 @@ export const PlatformSchema = z.enum(['twitch', 'youtube', 'kick']);
 export type Platform = z.infer<typeof PlatformSchema>;
 
 export const ConnectionStatusSchema = z.enum([
-  'disconnected',
-  'connecting',
   'connected',
-  'degraded',
-  'error',
+  'disconnected',
+  'expired',
+  'revoked',
 ]);
 export type ConnectionStatus = z.infer<typeof ConnectionStatusSchema>;
 
@@ -20,11 +19,13 @@ export const PlatformConnectionSchema = z.object({
   platformUserId: z.string(),
   platformUsername: z.string(),
   displayName: z.string(),
-  avatarUrl: z.string().url().optional(),
-  scopes: z.array(z.string()),
+  avatarUrl: z.string().nullable(),
+  scopes: z.string(),
   status: ConnectionStatusSchema,
-  connectedAt: z.string().datetime(),
-  lastRefreshedAt: z.string().datetime().optional(),
+  connectedAt: z.string().nullable(),
+  lastRefreshedAt: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type PlatformConnection = z.infer<typeof PlatformConnectionSchema>;
 
