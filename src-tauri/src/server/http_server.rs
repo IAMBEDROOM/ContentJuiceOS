@@ -15,6 +15,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
 use crate::db::Database;
+use crate::platform::kick::oauth::KickAuthState;
 use crate::platform::twitch::oauth::{OAuthCallbackParams, TwitchAuthState};
 use crate::platform::youtube::oauth::YouTubeAuthState;
 
@@ -24,6 +25,7 @@ struct AppState {
     socket_io_port: u16,
     auth_state: Arc<TwitchAuthState>,
     youtube_auth_state: Arc<YouTubeAuthState>,
+    kick_auth_state: Arc<KickAuthState>,
 }
 
 #[derive(Serialize)]
@@ -50,6 +52,7 @@ impl HttpServer {
         app_handle: tauri::AppHandle,
         auth_state: Arc<TwitchAuthState>,
         youtube_auth_state: Arc<YouTubeAuthState>,
+        kick_auth_state: Arc<KickAuthState>,
     ) -> Result<Self, String> {
         let (configured_port, socket_io_port) = {
             let db = app_handle.state::<Arc<Database>>();
@@ -99,6 +102,7 @@ impl HttpServer {
                 tx,
                 auth_state,
                 youtube_auth_state,
+                kick_auth_state,
             ));
         });
 
@@ -140,6 +144,7 @@ async fn run_server(
     tx: std::sync::mpsc::Sender<Result<u16, String>>,
     auth_state: Arc<TwitchAuthState>,
     youtube_auth_state: Arc<YouTubeAuthState>,
+    kick_auth_state: Arc<KickAuthState>,
 ) {
     let listener = match bind_with_fallback(configured_port, socket_io_port).await {
         Ok(l) => l,
@@ -156,6 +161,7 @@ async fn run_server(
         browser_sources_path,
         auth_state,
         youtube_auth_state,
+        kick_auth_state,
     );
 
     info!("HTTP server listening on http://127.0.0.1:{}", bound_port);
@@ -193,18 +199,21 @@ fn build_router(
     browser_sources_path: PathBuf,
     auth_state: Arc<TwitchAuthState>,
     youtube_auth_state: Arc<YouTubeAuthState>,
+    kick_auth_state: Arc<KickAuthState>,
 ) -> Router {
     let state = AppState {
         port,
         socket_io_port,
         auth_state,
         youtube_auth_state,
+        kick_auth_state,
     };
     Router::new()
         .route("/health", get(health_handler))
         .route("/config", get(config_handler))
         .route("/auth/callback/twitch", get(twitch_callback_handler))
         .route("/auth/callback/youtube", get(youtube_callback_handler))
+        .route("/auth/callback/kick", get(kick_callback_handler))
         .nest_service("/browser-sources", ServeDir::new(browser_sources_path))
         .layer(CorsLayer::permissive())
         .with_state(state)
@@ -300,6 +309,44 @@ async fn youtube_callback_handler(
     Html(callback_html(title, &message, accent_color))
 }
 
+async fn kick_callback_handler(
+    Query(params): Query<OAuthCallbackParams>,
+    State(state): State<AppState>,
+) -> Html<String> {
+    let (title, message, accent_color) = if params.error.is_some() {
+        let error_desc = params
+            .error_description
+            .as_deref()
+            .unwrap_or("Authorization was denied or an error occurred.");
+        let _ = state
+            .kick_auth_state
+            .complete_pending(Err(error_desc.to_string()))
+            .await;
+        (
+            "Authorization Failed",
+            format!("Kick authorization was not completed: {error_desc}"),
+            "#FF007F", // Hyper Magenta
+        )
+    } else {
+        if let Err(e) = state.kick_auth_state.complete_pending(Ok(params)).await {
+            error!("Failed to complete Kick OAuth flow: {e}");
+            return Html(callback_html(
+                "Authorization Error",
+                "An internal error occurred. Please try again.",
+                "#FF007F",
+            ));
+        }
+        (
+            "Authorization Successful",
+            "You have been connected to Kick! You can close this tab and return to ContentJuiceOS."
+                .to_string(),
+            "#00E5FF", // Electric Cyan
+        )
+    };
+
+    Html(callback_html(title, &message, accent_color))
+}
+
 fn callback_html(title: &str, message: &str, accent_color: &str) -> String {
     format!(
         r#"<!DOCTYPE html>
@@ -374,6 +421,7 @@ mod tests {
             PathBuf::from("nonexistent"),
             Arc::new(TwitchAuthState::new()),
             Arc::new(YouTubeAuthState::new()),
+            Arc::new(KickAuthState::new()),
         )
     }
 
@@ -441,6 +489,7 @@ mod tests {
             tmp.clone(),
             Arc::new(TwitchAuthState::new()),
             Arc::new(YouTubeAuthState::new()),
+            Arc::new(KickAuthState::new()),
         );
         let request = Request::builder()
             .uri("/browser-sources/test.html")

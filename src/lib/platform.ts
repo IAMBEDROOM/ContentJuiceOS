@@ -72,3 +72,21 @@ export async function refreshYouTubeTokens(
 export async function revokeYouTubeAuth(connectionId: string): Promise<void> {
   await invoke('revoke_youtube_auth', { connectionId });
 }
+
+// ---------------------------------------------------------------------------
+// Kick-specific
+// ---------------------------------------------------------------------------
+
+export async function startKickAuth(): Promise<PlatformConnection> {
+  return invoke<PlatformConnection>('start_kick_auth');
+}
+
+export async function refreshKickTokens(
+  connectionId: string,
+): Promise<void> {
+  await invoke('refresh_kick_tokens', { connectionId });
+}
+
+export async function revokeKickAuth(connectionId: string): Promise<void> {
+  await invoke('revoke_kick_auth', { connectionId });
+}

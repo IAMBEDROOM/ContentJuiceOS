@@ -45,10 +45,15 @@ pub fn run() {
                 Arc::new(platform::youtube::oauth::YouTubeAuthState::new());
             app.manage(youtube_auth_state.clone());
 
+            let kick_auth_state =
+                Arc::new(platform::kick::oauth::KickAuthState::new());
+            app.manage(kick_auth_state.clone());
+
             let http_server = server::HttpServer::start(
                 app.handle().clone(),
                 twitch_auth_state,
                 youtube_auth_state,
+                kick_auth_state,
             )
             .expect("Failed to start embedded HTTP server");
             app.manage(http_server);
@@ -85,6 +90,9 @@ pub fn run() {
             platform::youtube::commands::start_youtube_auth,
             platform::youtube::commands::refresh_youtube_tokens,
             platform::youtube::commands::revoke_youtube_auth,
+            platform::kick::commands::start_kick_auth,
+            platform::kick::commands::refresh_kick_tokens,
+            platform::kick::commands::revoke_kick_auth,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

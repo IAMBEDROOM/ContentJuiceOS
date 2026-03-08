@@ -3,6 +3,7 @@ import { Socket } from 'socket.io-client';
 import { getSocketIoInfo, connectToNamespace } from './lib/socket';
 import TwitchConnect from './components/TwitchConnect';
 import YouTubeConnect from './components/YouTubeConnect';
+import KickConnect from './components/KickConnect';
 import './App.css';
 
 interface PongResponse {
@@ -59,6 +60,7 @@ function App() {
 
       <TwitchConnect />
       <YouTubeConnect />
+      <KickConnect />
 
       <div className="socketio-section">
         <div className="status-pill">
