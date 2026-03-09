@@ -1,6 +1,6 @@
 pub mod commands;
 pub mod command;
-mod error;
+pub mod error;
 mod executor;
 mod probe;
 mod queue;

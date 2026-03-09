@@ -12,6 +12,7 @@ use crate::platform::repository;
 use crate::platform::twitch::oauth::OAuthCallbackParams;
 use crate::platform::types::{NewPlatformConnection, PlatformConnection};
 use crate::server::HttpServer;
+use crate::user_error::UserFacingError;
 
 use super::oauth::{self, KickAuthState, KICK_REDIRECT_PORTS, KICK_SCOPES};
 
@@ -91,13 +92,13 @@ pub async fn start_kick_auth(
     info!("Exchanging authorization code for tokens");
     let token_response = oauth::exchange_code_for_tokens(&code, &redirect_uri, &code_verifier)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_user_err()?;
 
     // Fetch user profile
     info!("Fetching Kick user profile");
     let user = oauth::get_current_user(&token_response.access_token)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_user_err()?;
 
     // Calculate token expiry
     let expires_at =
@@ -114,8 +115,8 @@ pub async fn start_kick_auth(
     };
 
     let connection = {
-        let conn = db.conn.lock().map_err(|e| e.to_string())?;
-        repository::upsert_connection(&conn, &new_connection).map_err(|e| e.to_string())?
+        let conn = db.conn.lock().map_user_err()?;
+        repository::upsert_connection(&conn, &new_connection).map_user_err()?
     };
 
     // Store tokens securely
@@ -126,7 +127,7 @@ pub async fn start_kick_auth(
     };
     cred_manager
         .store_platform_tokens(&connection.id, &tokens)
-        .map_err(|e| e.to_string())?;
+        .map_user_err()?;
 
     info!(
         "Kick connected: {} ({})",
@@ -146,7 +147,7 @@ pub async fn refresh_kick_tokens(
     // Get existing tokens
     let tokens = cred_manager
         .get_platform_tokens(&connection_id)
-        .map_err(|e| e.to_string())?
+        .map_user_err()?
         .ok_or("No tokens found for this connection")?;
 
     let refresh_token = tokens.refresh_token.ok_or("No refresh token available")?;
@@ -154,7 +155,7 @@ pub async fn refresh_kick_tokens(
     // Refresh — Kick returns a new refresh_token (like Twitch)
     let new_tokens = oauth::refresh_access_token(&refresh_token)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_user_err()?;
 
     let expires_at = chrono::Utc::now() + chrono::Duration::seconds(new_tokens.expires_in as i64);
 
@@ -166,11 +167,11 @@ pub async fn refresh_kick_tokens(
     };
     cred_manager
         .store_platform_tokens(&connection_id, &updated)
-        .map_err(|e| e.to_string())?;
+        .map_user_err()?;
 
     // Update last_refreshed_at in DB
-    let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    repository::update_last_refreshed(&conn, &connection_id).map_err(|e| e.to_string())?;
+    let conn = db.conn.lock().map_user_err()?;
+    repository::update_last_refreshed(&conn, &connection_id).map_user_err()?;
 
     info!("Refreshed Kick tokens for connection {connection_id}");
     Ok(())
@@ -197,12 +198,12 @@ pub async fn revoke_kick_auth(
     };
     cred_manager
         .delete_credential(&kind)
-        .map_err(|e| e.to_string())?;
+        .map_user_err()?;
 
     // Update status in DB
-    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = db.conn.lock().map_user_err()?;
     repository::update_connection_status(&conn, &connection_id, "revoked")
-        .map_err(|e| e.to_string())?;
+        .map_user_err()?;
 
     info!("Revoked Kick auth for connection {connection_id}");
     Ok(())

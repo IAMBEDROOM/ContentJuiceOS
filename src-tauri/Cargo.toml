@@ -33,6 +33,7 @@ sha2 = "0.10"
 rand = "0.8"
 base64 = "0.22"
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+http = "1"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"

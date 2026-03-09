@@ -4,12 +4,13 @@ use super::engine::{self, BackupInfo};
 use std::sync::Arc;
 
 use crate::db::Database;
+use crate::user_error::UserFacingError;
 
 fn backup_dir(app_handle: &AppHandle) -> Result<std::path::PathBuf, String> {
     let dir = app_handle
         .path()
         .app_data_dir()
-        .map_err(|e: tauri::Error| e.to_string())?;
+        .map_user_err()?;
     Ok(dir.join("backups"))
 }
 
@@ -30,8 +31,8 @@ pub fn create_backup(
     app_handle: AppHandle,
 ) -> Result<BackupInfo, String> {
     let backup_dir = backup_dir(&app_handle)?;
-    let conn = database.conn.lock().map_err(|e| e.to_string())?;
-    let info = engine::create_backup(&conn, &backup_dir).map_err(|e| e.to_string())?;
+    let conn = database.conn.lock().map_user_err()?;
+    let info = engine::create_backup(&conn, &backup_dir).map_user_err()?;
     let max = max_backups_setting(&conn);
     let _ = engine::cleanup_old_backups(&backup_dir, max);
     Ok(info)
@@ -40,7 +41,7 @@ pub fn create_backup(
 #[tauri::command]
 pub fn list_backups(app_handle: AppHandle) -> Result<Vec<BackupInfo>, String> {
     let backup_dir = backup_dir(&app_handle)?;
-    engine::list_backups(&backup_dir).map_err(|e| e.to_string())
+    engine::list_backups(&backup_dir).map_user_err()
 }
 
 #[tauri::command]
@@ -50,16 +51,16 @@ pub fn restore_backup(
     app_handle: AppHandle,
 ) -> Result<(), String> {
     let backup_dir = backup_dir(&app_handle)?;
-    let mut conn = database.conn.lock().map_err(|e| e.to_string())?;
+    let mut conn = database.conn.lock().map_user_err()?;
 
     // Create safety backup before restoring
-    engine::create_prerestore_backup(&conn, &backup_dir).map_err(|e| e.to_string())?;
+    engine::create_prerestore_backup(&conn, &backup_dir).map_user_err()?;
 
-    engine::restore_backup(&mut conn, &backup_dir, &filename).map_err(|e| e.to_string())
+    engine::restore_backup(&mut conn, &backup_dir, &filename).map_user_err()
 }
 
 #[tauri::command]
 pub fn delete_backup(filename: String, app_handle: AppHandle) -> Result<(), String> {
     let backup_dir = backup_dir(&app_handle)?;
-    engine::delete_backup(&backup_dir, &filename).map_err(|e| e.to_string())
+    engine::delete_backup(&backup_dir, &filename).map_user_err()
 }

@@ -3,6 +3,8 @@ use std::sync::Arc;
 use serde_json::Value;
 use tauri::State;
 
+use crate::user_error::UserFacingError;
+
 use super::types::{CacheStats, CacheType};
 use super::CacheService;
 
@@ -18,7 +20,7 @@ pub fn cache_get(
 
     cache
         .get_raw(ct, &cache_key, platform.as_deref())
-        .map_err(|e| e.to_string())
+        .map_user_err()
 }
 
 #[tauri::command]
@@ -34,14 +36,14 @@ pub fn cache_invalidate(
     match cache_key {
         Some(key) => cache
             .invalidate(ct, &key, platform.as_deref())
-            .map_err(|e| e.to_string()),
+            .map_user_err(),
         None => cache
             .invalidate_type(ct, platform.as_deref())
-            .map_err(|e| e.to_string()),
+            .map_user_err(),
     }
 }
 
 #[tauri::command]
 pub fn cache_stats(cache: State<'_, Arc<CacheService>>) -> Result<CacheStats, String> {
-    cache.get_stats().map_err(|e| e.to_string())
+    cache.get_stats().map_user_err()
 }

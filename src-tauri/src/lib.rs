@@ -1,3 +1,4 @@
+mod audit;
 mod backup;
 mod cache;
 mod credentials;
@@ -9,6 +10,7 @@ mod retry;
 mod server;
 mod settings;
 mod types;
+mod user_error;
 
 use std::sync::Arc;
 
@@ -30,6 +32,8 @@ pub fn run() {
                 Arc::new(Database::initialize(&app_data_dir).expect(
                     "Failed to initialize database — cannot start without a working database",
                 ));
+
+            audit::prune_old_entries(&database);
 
             let cred_manager = credentials::CredentialManager::initialize(Arc::clone(&database));
             app.manage(cred_manager);

@@ -1,5 +1,7 @@
 use tauri::State;
 
+use crate::user_error::UserFacingError;
+
 use super::store::CredentialManager;
 use super::types::{CredentialKind, OAuthTokens};
 
@@ -11,7 +13,7 @@ pub fn store_credential(
 ) -> Result<(), String> {
     cred_manager
         .store_credential(&kind, &value)
-        .map_err(|e| e.to_string())
+        .map_user_err()
 }
 
 #[tauri::command]
@@ -21,7 +23,7 @@ pub fn get_credential(
 ) -> Result<Option<String>, String> {
     cred_manager
         .get_credential(&kind)
-        .map_err(|e| e.to_string())
+        .map_user_err()
 }
 
 #[tauri::command]
@@ -31,7 +33,7 @@ pub fn delete_credential(
 ) -> Result<(), String> {
     cred_manager
         .delete_credential(&kind)
-        .map_err(|e| e.to_string())
+        .map_user_err()
 }
 
 #[tauri::command]
@@ -41,7 +43,7 @@ pub fn has_credential(
 ) -> Result<bool, String> {
     cred_manager
         .has_credential(&kind)
-        .map_err(|e| e.to_string())
+        .map_user_err()
 }
 
 #[tauri::command]
@@ -69,7 +71,7 @@ pub fn store_platform_tokens(
     };
     cred_manager
         .store_platform_tokens(&connection_id, &tokens)
-        .map_err(|e| e.to_string())
+        .map_user_err()
 }
 
 #[tauri::command]
@@ -79,5 +81,5 @@ pub fn get_platform_tokens(
 ) -> Result<Option<OAuthTokens>, String> {
     cred_manager
         .get_platform_tokens(&connection_id)
-        .map_err(|e| e.to_string())
+        .map_user_err()
 }

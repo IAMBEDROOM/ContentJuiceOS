@@ -17,6 +17,9 @@ function parsePort(args: string[]): number {
 const preferredPort = parsePort(process.argv);
 const MAX_PORT_RETRIES = 10;
 
+const VALID_NAMESPACES = new Set(["/overlays", "/control"]);
+const VALID_EVENTS = new Set(["ping", "pong", "render"]);
+
 function setupEmitEndpoint(
   httpServer: ReturnType<typeof createServer>,
   io: Server,
@@ -35,6 +38,16 @@ function setupEmitEndpoint(
             res.end(JSON.stringify({ error: "namespace and event are required" }));
             return;
           }
+          if (!VALID_NAMESPACES.has(namespace)) {
+            res.writeHead(403, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: "Unknown namespace" }));
+            return;
+          }
+          if (!VALID_EVENTS.has(event)) {
+            res.writeHead(403, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: "Unknown event" }));
+            return;
+          }
           io.of(namespace).emit(event, data);
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ ok: true }));
@@ -51,7 +64,19 @@ function startServer(port: number, attempt: number): void {
   const httpServer = createServer();
   const io = new Server(httpServer, {
     cors: {
-      origin: "*",
+      origin: (origin, callback) => {
+        if (
+          !origin ||
+          origin.startsWith("http://127.0.0.1") ||
+          origin.startsWith("http://localhost") ||
+          origin === "tauri://localhost" ||
+          origin === "https://tauri.localhost"
+        ) {
+          callback(null, true);
+        } else {
+          callback(new Error("CORS origin not allowed"), false);
+        }
+      },
       methods: ["GET", "POST"],
     },
     transports: ["websocket", "polling"],

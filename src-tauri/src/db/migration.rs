@@ -119,6 +119,20 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_platform_connections_platform_user
 ON platform_connections(platform, platform_user_id);
 ";
 
+const MIGRATION_V4_AUDIT_LOG: &str = "
+-- Audit log for security-sensitive operations
+CREATE TABLE IF NOT EXISTS audit_log (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp  TEXT NOT NULL DEFAULT (datetime('now')),
+    event_type TEXT NOT NULL,
+    platform   TEXT,
+    details    TEXT NOT NULL DEFAULT '',
+    success    INTEGER NOT NULL DEFAULT 1
+);
+CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp ON audit_log(timestamp);
+CREATE INDEX IF NOT EXISTS idx_audit_log_event_type ON audit_log(event_type);
+";
+
 /// Returns all migrations in version order. New migrations are appended here by future tasks.
 pub fn all_migrations() -> &'static [Migration] {
     &[
@@ -136,6 +150,11 @@ pub fn all_migrations() -> &'static [Migration] {
             version: 3,
             name: "platform_unique_index",
             sql: MIGRATION_V3_PLATFORM_UNIQUE,
+        },
+        Migration {
+            version: 4,
+            name: "audit_log",
+            sql: MIGRATION_V4_AUDIT_LOG,
         },
     ]
 }
@@ -242,7 +261,7 @@ mod tests {
         let count: u32 = conn
             .query_row("SELECT COUNT(*) FROM _migrations", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(count, 3);
+        assert_eq!(count, 4);
     }
 
     #[test]
@@ -254,7 +273,7 @@ mod tests {
         let count: u32 = conn
             .query_row("SELECT COUNT(*) FROM _migrations", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(count, 3);
+        assert_eq!(count, 4);
     }
 
     #[test]
@@ -265,7 +284,7 @@ mod tests {
         let max_version: u32 = conn
             .query_row("SELECT MAX(version) FROM _migrations", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(max_version, 3);
+        assert_eq!(max_version, 4);
 
         // Running again should be a no-op
         run_migrations(&conn).unwrap();
@@ -273,7 +292,7 @@ mod tests {
         let count: u32 = conn
             .query_row("SELECT COUNT(*) FROM _migrations", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(count, 3);
+        assert_eq!(count, 4);
     }
 
     #[test]

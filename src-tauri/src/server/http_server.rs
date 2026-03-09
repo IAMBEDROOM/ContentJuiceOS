@@ -11,6 +11,7 @@ use axum::{Json, Router};
 use log::{error, info};
 use serde::Serialize;
 use tauri::Manager;
+use http::{header, HeaderValue, Method};
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
@@ -193,6 +194,84 @@ async fn bind_with_fallback(
     ))
 }
 
+/// Simple token-bucket rate limiter: 100 requests per 60 seconds.
+async fn rate_limit_middleware(
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::time::UNIX_EPOCH;
+
+    static TOKENS: AtomicU64 = AtomicU64::new(100);
+    static WINDOW_START: AtomicU64 = AtomicU64::new(0);
+
+    let now = std::time::SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    let window = WINDOW_START.load(Ordering::Relaxed);
+    if now >= window + 60 {
+        TOKENS.store(100, Ordering::Relaxed);
+        WINDOW_START.store(now, Ordering::Relaxed);
+    }
+
+    if TOKENS.load(Ordering::Relaxed) == 0 {
+        return axum::response::Response::builder()
+            .status(429)
+            .header("Retry-After", "60")
+            .body(axum::body::Body::from("Too Many Requests"))
+            .unwrap();
+    }
+
+    TOKENS.fetch_sub(1, Ordering::Relaxed);
+    next.run(request).await
+}
+
+/// Add security headers to all responses.
+async fn security_headers_middleware(
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let is_sensitive = request
+        .uri()
+        .path()
+        .starts_with("/health")
+        || request.uri().path().starts_with("/config")
+        || request.uri().path().starts_with("/auth/");
+
+    let mut response = next.run(request).await;
+    let headers = response.headers_mut();
+
+    headers.insert("X-Content-Type-Options", "nosniff".parse().unwrap());
+    headers.insert("X-Frame-Options", "SAMEORIGIN".parse().unwrap());
+    headers.insert("Referrer-Policy", "no-referrer".parse().unwrap());
+
+    if is_sensitive {
+        headers.insert("Cache-Control", "no-store".parse().unwrap());
+    }
+
+    response
+}
+
+fn build_cors_layer(port: u16) -> CorsLayer {
+    let origins: Vec<HeaderValue> = [
+        format!("http://127.0.0.1:{port}"),
+        format!("http://localhost:{port}"),
+        "http://localhost:1420".to_string(),  // Tauri dev server
+        "tauri://localhost".to_string(),      // Tauri production (macOS/Linux)
+        "https://tauri.localhost".to_string(), // Tauri production (Windows)
+    ]
+    .into_iter()
+    .filter_map(|o| o.parse::<HeaderValue>().ok())
+    .collect();
+
+    CorsLayer::new()
+        .allow_origin(origins)
+        .allow_methods([Method::GET])
+        .allow_headers([header::CONTENT_TYPE, header::ACCEPT])
+}
+
 fn build_router(
     port: u16,
     socket_io_port: u16,
@@ -215,7 +294,9 @@ fn build_router(
         .route("/auth/callback/youtube", get(youtube_callback_handler))
         .route("/auth/callback/kick", get(kick_callback_handler))
         .nest_service("/browser-sources", ServeDir::new(browser_sources_path))
-        .layer(CorsLayer::permissive())
+        .layer(build_cors_layer(port))
+        .layer(axum::middleware::from_fn(rate_limit_middleware))
+        .layer(axum::middleware::from_fn(security_headers_middleware))
         .with_state(state)
 }
 
@@ -347,7 +428,19 @@ async fn kick_callback_handler(
     Html(callback_html(title, &message, accent_color))
 }
 
+fn html_escape(input: &str) -> String {
+    input
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#x27;")
+}
+
 fn callback_html(title: &str, message: &str, accent_color: &str) -> String {
+    let title = html_escape(title);
+    let message = html_escape(message);
+    let accent_color = html_escape(accent_color);
     format!(
         r#"<!DOCTYPE html>
 <html lang="en">
@@ -547,5 +640,27 @@ mod tests {
         assert!(result.is_err());
 
         drop(blockers);
+    }
+
+    #[test]
+    fn html_escape_prevents_xss() {
+        let malicious = "<script>alert('xss')</script>";
+        let escaped = html_escape(malicious);
+        assert!(!escaped.contains('<'));
+        assert!(!escaped.contains('>'));
+        assert!(escaped.contains("&lt;script&gt;"));
+    }
+
+    #[test]
+    fn callback_html_escapes_all_params() {
+        let html = callback_html(
+            "<b>title</b>",
+            "<img src=x onerror=alert(1)>",
+            "red; background: url(evil)",
+        );
+        assert!(!html.contains("<b>title</b>"));
+        assert!(!html.contains("<img src=x"));
+        assert!(html.contains("&lt;b&gt;title&lt;/b&gt;"));
+        assert!(html.contains("&lt;img src=x"));
     }
 }

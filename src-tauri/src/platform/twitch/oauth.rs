@@ -196,9 +196,8 @@ pub async fn exchange_code_for_tokens(
     redirect_uri: &str,
     code_verifier: &str,
 ) -> PlatformResult<TwitchTokenResponse> {
-    eprintln!(
-        "[TWITCH DEBUG] Token exchange — client_id: '{}', redirect_uri: '{}', code_verifier length: {}",
-        TWITCH_CLIENT_ID,
+    log::debug!(
+        "[TWITCH] Token exchange — redirect_uri: '{}', code_verifier length: {}",
         redirect_uri,
         code_verifier.len(),
     );

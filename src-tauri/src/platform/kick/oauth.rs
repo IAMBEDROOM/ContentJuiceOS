@@ -186,9 +186,8 @@ pub async fn exchange_code_for_tokens(
     redirect_uri: &str,
     code_verifier: &str,
 ) -> PlatformResult<KickTokenResponse> {
-    eprintln!(
-        "[KICK DEBUG] Token exchange — client_id: '{}', redirect_uri: '{}', code_verifier length: {}",
-        KICK_CLIENT_ID,
+    log::debug!(
+        "[KICK] Token exchange — redirect_uri: '{}', code_verifier length: {}",
         redirect_uri,
         code_verifier.len(),
     );

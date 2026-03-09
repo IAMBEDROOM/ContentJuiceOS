@@ -5,6 +5,7 @@ use tauri::State;
 use crate::credentials::store::CredentialManager;
 use crate::credentials::types::CredentialKind;
 use crate::db::Database;
+use crate::user_error::UserFacingError;
 
 use super::repository;
 use super::types::PlatformConnection;
@@ -13,8 +14,8 @@ use super::types::PlatformConnection;
 pub fn get_platform_connections(
     db: State<'_, Arc<Database>>,
 ) -> Result<Vec<PlatformConnection>, String> {
-    let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    repository::list_connections(&conn).map_err(|e| e.to_string())
+    let conn = db.conn.lock().map_user_err()?;
+    repository::list_connections(&conn).map_user_err()
 }
 
 #[tauri::command]
@@ -22,8 +23,8 @@ pub fn get_platform_connection(
     id: String,
     db: State<'_, Arc<Database>>,
 ) -> Result<Option<PlatformConnection>, String> {
-    let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    repository::get_connection(&conn, &id).map_err(|e| e.to_string())
+    let conn = db.conn.lock().map_user_err()?;
+    repository::get_connection(&conn, &id).map_user_err()
 }
 
 /// Disconnect a platform — sets status to 'disconnected' and deletes stored tokens.
@@ -39,9 +40,9 @@ pub fn disconnect_platform(
     };
     cred_manager
         .delete_credential(&kind)
-        .map_err(|e| e.to_string())?;
+        .map_user_err()?;
 
     // Update status in DB
-    let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    repository::update_connection_status(&conn, &id, "disconnected").map_err(|e| e.to_string())
+    let conn = db.conn.lock().map_user_err()?;
+    repository::update_connection_status(&conn, &id, "disconnected").map_user_err()
 }
