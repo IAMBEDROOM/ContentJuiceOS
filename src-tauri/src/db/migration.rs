@@ -288,7 +288,10 @@ mod tests {
                 |row| row.get(0),
             )
             .unwrap();
-        assert!(exists, "secure_credentials table should exist after V2 migration");
+        assert!(
+            exists,
+            "secure_credentials table should exist after V2 migration"
+        );
 
         // Verify we can insert and query
         conn.execute(

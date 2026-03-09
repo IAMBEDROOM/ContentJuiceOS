@@ -100,8 +100,8 @@ pub async fn start_kick_auth(
         .map_err(|e| e.to_string())?;
 
     // Calculate token expiry
-    let expires_at = chrono::Utc::now()
-        + chrono::Duration::seconds(token_response.expires_in as i64);
+    let expires_at =
+        chrono::Utc::now() + chrono::Duration::seconds(token_response.expires_in as i64);
 
     // Upsert the platform connection
     let new_connection = NewPlatformConnection {
@@ -149,17 +149,14 @@ pub async fn refresh_kick_tokens(
         .map_err(|e| e.to_string())?
         .ok_or("No tokens found for this connection")?;
 
-    let refresh_token = tokens
-        .refresh_token
-        .ok_or("No refresh token available")?;
+    let refresh_token = tokens.refresh_token.ok_or("No refresh token available")?;
 
     // Refresh — Kick returns a new refresh_token (like Twitch)
     let new_tokens = oauth::refresh_access_token(&refresh_token)
         .await
         .map_err(|e| e.to_string())?;
 
-    let expires_at = chrono::Utc::now()
-        + chrono::Duration::seconds(new_tokens.expires_in as i64);
+    let expires_at = chrono::Utc::now() + chrono::Duration::seconds(new_tokens.expires_in as i64);
 
     // Store updated tokens (including the new refresh_token)
     let updated = OAuthTokens {

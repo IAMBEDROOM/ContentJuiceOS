@@ -64,7 +64,10 @@ mod tests {
         let kind = CredentialKind::PlatformToken {
             connection_id: "abc-123".to_string(),
         };
-        assert_eq!(credential_key(&kind), "contentjuiceos:platform_token:abc-123");
+        assert_eq!(
+            credential_key(&kind),
+            "contentjuiceos:platform_token:abc-123"
+        );
     }
 
     #[test]

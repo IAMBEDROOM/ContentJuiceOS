@@ -2,6 +2,7 @@ use std::fmt;
 
 use crate::credentials::error::CredentialError;
 use crate::db::error::DbError;
+use crate::rate_limiter::error::RateLimiterError;
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -12,6 +13,7 @@ pub enum PlatformError {
     Http(String),
     InvalidState(String),
     Credential(CredentialError),
+    RateLimited(String),
 }
 
 impl fmt::Display for PlatformError {
@@ -23,6 +25,7 @@ impl fmt::Display for PlatformError {
             Self::Http(msg) => write!(f, "HTTP error: {msg}"),
             Self::InvalidState(msg) => write!(f, "Invalid state: {msg}"),
             Self::Credential(e) => write!(f, "Credential error: {e}"),
+            Self::RateLimited(msg) => write!(f, "Rate limited: {msg}"),
         }
     }
 }
@@ -44,6 +47,12 @@ impl From<DbError> for PlatformError {
 impl From<CredentialError> for PlatformError {
     fn from(e: CredentialError) -> Self {
         Self::Credential(e)
+    }
+}
+
+impl From<RateLimiterError> for PlatformError {
+    fn from(e: RateLimiterError) -> Self {
+        Self::RateLimited(e.to_string())
     }
 }
 

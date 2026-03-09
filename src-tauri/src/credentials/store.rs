@@ -35,9 +35,9 @@ impl KeychainStore {
             .set_password("probe")
             .map_err(|e| CredentialError::Keychain(format!("Keychain probe write failed: {e}")))?;
 
-        entry.delete_credential().map_err(|e| {
-            CredentialError::Keychain(format!("Keychain probe delete failed: {e}"))
-        })?;
+        entry
+            .delete_credential()
+            .map_err(|e| CredentialError::Keychain(format!("Keychain probe delete failed: {e}")))?;
 
         Ok(Self)
     }
@@ -45,8 +45,9 @@ impl KeychainStore {
 
 impl CredentialStore for KeychainStore {
     fn store(&self, key: &str, value: &str) -> CredResult<()> {
-        let entry = keyring::Entry::new(Self::SERVICE, key)
-            .map_err(|e| CredentialError::Keychain(format!("Keychain entry creation failed: {e}")))?;
+        let entry = keyring::Entry::new(Self::SERVICE, key).map_err(|e| {
+            CredentialError::Keychain(format!("Keychain entry creation failed: {e}"))
+        })?;
         entry
             .set_password(value)
             .map_err(|e| CredentialError::Keychain(format!("Keychain store failed: {e}")))?;
@@ -54,8 +55,9 @@ impl CredentialStore for KeychainStore {
     }
 
     fn retrieve(&self, key: &str) -> CredResult<Option<String>> {
-        let entry = keyring::Entry::new(Self::SERVICE, key)
-            .map_err(|e| CredentialError::Keychain(format!("Keychain entry creation failed: {e}")))?;
+        let entry = keyring::Entry::new(Self::SERVICE, key).map_err(|e| {
+            CredentialError::Keychain(format!("Keychain entry creation failed: {e}"))
+        })?;
         match entry.get_password() {
             Ok(password) => Ok(Some(password)),
             Err(keyring::Error::NoEntry) => Ok(None),
@@ -66,8 +68,9 @@ impl CredentialStore for KeychainStore {
     }
 
     fn delete(&self, key: &str) -> CredResult<()> {
-        let entry = keyring::Entry::new(Self::SERVICE, key)
-            .map_err(|e| CredentialError::Keychain(format!("Keychain entry creation failed: {e}")))?;
+        let entry = keyring::Entry::new(Self::SERVICE, key).map_err(|e| {
+            CredentialError::Keychain(format!("Keychain entry creation failed: {e}"))
+        })?;
         match entry.delete_credential() {
             Ok(()) => Ok(()),
             Err(keyring::Error::NoEntry) => Ok(()), // Already gone — not an error
@@ -78,8 +81,9 @@ impl CredentialStore for KeychainStore {
     }
 
     fn exists(&self, key: &str) -> CredResult<bool> {
-        let entry = keyring::Entry::new(Self::SERVICE, key)
-            .map_err(|e| CredentialError::Keychain(format!("Keychain entry creation failed: {e}")))?;
+        let entry = keyring::Entry::new(Self::SERVICE, key).map_err(|e| {
+            CredentialError::Keychain(format!("Keychain entry creation failed: {e}"))
+        })?;
         match entry.get_password() {
             Ok(_) => Ok(true),
             Err(keyring::Error::NoEntry) => Ok(false),
@@ -151,11 +155,8 @@ impl CredentialStore for EncryptedSqliteStore {
             .conn
             .lock()
             .map_err(|e| CredentialError::Encryption(format!("Database lock failed: {e}")))?;
-        conn.execute(
-            "DELETE FROM secure_credentials WHERE key = ?1",
-            [key],
-        )
-        .map_err(|e| CredentialError::Database(e.into()))?;
+        conn.execute("DELETE FROM secure_credentials WHERE key = ?1", [key])
+            .map_err(|e| CredentialError::Database(e.into()))?;
         Ok(())
     }
 
@@ -197,9 +198,7 @@ impl CredentialManager {
                 }
             }
             Err(e) => {
-                warn!(
-                    "OS keychain unavailable ({e}), falling back to encrypted SQLite storage"
-                );
+                warn!("OS keychain unavailable ({e}), falling back to encrypted SQLite storage");
                 let sqlite_store = EncryptedSqliteStore::new(database)
                     .expect("Failed to initialize encrypted SQLite credential store");
                 Self {

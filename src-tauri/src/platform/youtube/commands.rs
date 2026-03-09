@@ -91,15 +91,11 @@ pub async fn start_youtube_auth(
         .map_err(|e| e.to_string())?;
 
     // Calculate token expiry
-    let expires_at = chrono::Utc::now()
-        + chrono::Duration::seconds(token_response.expires_in as i64);
+    let expires_at =
+        chrono::Utc::now() + chrono::Duration::seconds(token_response.expires_in as i64);
 
     // Extract avatar URL from thumbnails
-    let avatar_url = channel
-        .snippet
-        .thumbnails
-        .default
-        .map(|t| t.url);
+    let avatar_url = channel.snippet.thumbnails.default.map(|t| t.url);
 
     // Use custom_url (e.g. "@channelname") as the username, fallback to channel ID
     let platform_username = channel
@@ -156,17 +152,14 @@ pub async fn refresh_youtube_tokens(
         .map_err(|e| e.to_string())?
         .ok_or("No tokens found for this connection")?;
 
-    let refresh_token = tokens
-        .refresh_token
-        .ok_or("No refresh token available")?;
+    let refresh_token = tokens.refresh_token.ok_or("No refresh token available")?;
 
     // Refresh — Google will return a new access_token but NO refresh_token
     let new_tokens = oauth::refresh_access_token(&refresh_token)
         .await
         .map_err(|e| e.to_string())?;
 
-    let expires_at = chrono::Utc::now()
-        + chrono::Duration::seconds(new_tokens.expires_in as i64);
+    let expires_at = chrono::Utc::now() + chrono::Duration::seconds(new_tokens.expires_in as i64);
 
     // Preserve the original refresh_token — Google does NOT issue a new one on refresh
     let updated = OAuthTokens {

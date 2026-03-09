@@ -54,7 +54,9 @@ impl YouTubeAuthState {
     pub async fn set_pending(
         &self,
         state_param: String,
-        result_tx: oneshot::Sender<Result<crate::platform::twitch::oauth::OAuthCallbackParams, String>>,
+        result_tx: oneshot::Sender<
+            Result<crate::platform::twitch::oauth::OAuthCallbackParams, String>,
+        >,
     ) -> PlatformResult<()> {
         let mut pending = self.pending.lock().await;
 
@@ -235,9 +237,7 @@ pub async fn exchange_code_for_tokens(
 /// Refresh an access token using a refresh token.
 /// **Critical:** Google does NOT return a new refresh_token on refresh — the caller
 /// must preserve the original refresh_token.
-pub async fn refresh_access_token(
-    refresh_token: &str,
-) -> PlatformResult<YouTubeTokenResponse> {
+pub async fn refresh_access_token(refresh_token: &str) -> PlatformResult<YouTubeTokenResponse> {
     let client = reqwest::Client::new();
     let response = client
         .post(YOUTUBE_TOKEN_URL)
@@ -288,13 +288,9 @@ pub async fn get_current_channel(access_token: &str) -> PlatformResult<YouTubeCh
         .await
         .map_err(|e| PlatformError::OAuth(format!("Failed to parse channel response: {e}")))?;
 
-    channels
-        .items
-        .into_iter()
-        .next()
-        .ok_or_else(|| {
-            PlatformError::OAuth("No YouTube channel found for this account".to_string())
-        })
+    channels.items.into_iter().next().ok_or_else(|| {
+        PlatformError::OAuth("No YouTube channel found for this account".to_string())
+    })
 }
 
 /// Revoke an access or refresh token.

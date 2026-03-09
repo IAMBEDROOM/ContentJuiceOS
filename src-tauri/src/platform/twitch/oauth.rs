@@ -26,11 +26,7 @@ pub const TWITCH_REVOKE_URL: &str = "https://id.twitch.tv/oauth2/revoke";
 /// Phase 1-2 scopes: user info, subscriptions, bits.
 /// Follows, raids, and gift subs are available via EventSub without additional scopes.
 /// Phase 3 will add chat/moderation scopes — users re-auth and the upsert handles it.
-pub const TWITCH_SCOPES: &[&str] = &[
-    "user:read:email",
-    "channel:read:subscriptions",
-    "bits:read",
-];
+pub const TWITCH_SCOPES: &[&str] = &["user:read:email", "channel:read:subscriptions", "bits:read"];
 
 /// Valid redirect port range. These ports must be registered on the Twitch Developer Console.
 pub const TWITCH_REDIRECT_PORTS: std::ops::RangeInclusive<u16> = 4848..=4858;
@@ -236,9 +232,7 @@ pub async fn exchange_code_for_tokens(
 }
 
 /// Refresh an access token using a refresh token.
-pub async fn refresh_access_token(
-    refresh_token: &str,
-) -> PlatformResult<TwitchTokenResponse> {
+pub async fn refresh_access_token(refresh_token: &str) -> PlatformResult<TwitchTokenResponse> {
     let client = reqwest::Client::new();
     let response = client
         .post(TWITCH_TOKEN_URL)
@@ -300,10 +294,7 @@ pub async fn revoke_token(access_token: &str) -> PlatformResult<()> {
     let client = reqwest::Client::new();
     let response = client
         .post(TWITCH_REVOKE_URL)
-        .form(&[
-            ("client_id", TWITCH_CLIENT_ID),
-            ("token", access_token),
-        ])
+        .form(&[("client_id", TWITCH_CLIENT_ID), ("token", access_token)])
         .send()
         .await?;
 
@@ -373,7 +364,7 @@ mod tests {
         assert!(verifier.len() >= 43); // RFC 7636 minimum
         let challenge = compute_code_challenge(&verifier);
         assert!(!challenge.is_empty());
-        assert!(!challenge.contains('='));  // No padding in base64url
+        assert!(!challenge.contains('=')); // No padding in base64url
         assert!(!challenge.contains('+'));
         assert!(!challenge.contains('/'));
     }

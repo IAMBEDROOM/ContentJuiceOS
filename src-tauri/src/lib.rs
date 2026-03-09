@@ -1,9 +1,12 @@
 mod backup;
+mod cache;
 mod credentials;
 mod db;
 mod platform;
+mod rate_limiter;
 mod server;
 mod settings;
+mod types;
 
 use std::sync::Arc;
 
@@ -21,14 +24,17 @@ pub fn run() {
                 .app_data_dir()
                 .expect("Failed to resolve app data directory");
 
-            let database = Arc::new(
-                Database::initialize(&app_data_dir)
-                    .expect("Failed to initialize database — cannot start without a working database"),
-            );
+            let database =
+                Arc::new(Database::initialize(&app_data_dir).expect(
+                    "Failed to initialize database — cannot start without a working database",
+                ));
 
-            let cred_manager =
-                credentials::CredentialManager::initialize(Arc::clone(&database));
+            let cred_manager = credentials::CredentialManager::initialize(Arc::clone(&database));
             app.manage(cred_manager);
+
+            let cache_service = Arc::new(cache::CacheService::new(Arc::clone(&database)));
+            cache_service.start_cleanup_task();
+            app.manage(cache_service);
 
             app.manage(database);
 
@@ -37,17 +43,18 @@ pub fn run() {
             app.manage(scheduler);
 
             // Create auth states before HttpServer (server needs them for callback routes)
-            let twitch_auth_state =
-                Arc::new(platform::twitch::oauth::TwitchAuthState::new());
+            let twitch_auth_state = Arc::new(platform::twitch::oauth::TwitchAuthState::new());
             app.manage(twitch_auth_state.clone());
 
-            let youtube_auth_state =
-                Arc::new(platform::youtube::oauth::YouTubeAuthState::new());
+            let youtube_auth_state = Arc::new(platform::youtube::oauth::YouTubeAuthState::new());
             app.manage(youtube_auth_state.clone());
 
-            let kick_auth_state =
-                Arc::new(platform::kick::oauth::KickAuthState::new());
+            let kick_auth_state = Arc::new(platform::kick::oauth::KickAuthState::new());
             app.manage(kick_auth_state.clone());
+
+            let rate_limiter = Arc::new(rate_limiter::RateLimiterService::new());
+            rate_limiter.start_refill_task();
+            app.manage(rate_limiter);
 
             let http_server = server::HttpServer::start(
                 app.handle().clone(),
@@ -93,6 +100,10 @@ pub fn run() {
             platform::kick::commands::start_kick_auth,
             platform::kick::commands::refresh_kick_tokens,
             platform::kick::commands::revoke_kick_auth,
+            rate_limiter::commands::get_rate_limit_status,
+            cache::commands::cache_get,
+            cache::commands::cache_invalidate,
+            cache::commands::cache_stats,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

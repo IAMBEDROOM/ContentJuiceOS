@@ -8,7 +8,10 @@ use crate::db::Database;
 use super::repository;
 
 #[tauri::command]
-pub fn get_config_section(section: String, database: State<'_, Arc<Database>>) -> Result<Value, String> {
+pub fn get_config_section(
+    section: String,
+    database: State<'_, Arc<Database>>,
+) -> Result<Value, String> {
     let conn = database.conn.lock().map_err(|e| e.to_string())?;
     repository::get_section(&conn, &section).map_err(|e| e.to_string())
 }

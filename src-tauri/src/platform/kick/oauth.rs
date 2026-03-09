@@ -24,11 +24,7 @@ pub const KICK_USERS_URL: &str = "https://api.kick.com/public/v1/users";
 
 /// Phase 1-2 scopes: user info, channel info, event subscriptions.
 /// Phase 3 will add chat scopes — users re-auth and the upsert handles it.
-pub const KICK_SCOPES: &[&str] = &[
-    "user:read",
-    "channel:read",
-    "events:subscribe",
-];
+pub const KICK_SCOPES: &[&str] = &["user:read", "channel:read", "events:subscribe"];
 
 /// Valid redirect port range. These ports must be registered on the Kick Developer Console.
 pub const KICK_REDIRECT_PORTS: std::ops::RangeInclusive<u16> = 4848..=4868;
@@ -226,9 +222,7 @@ pub async fn exchange_code_for_tokens(
 }
 
 /// Refresh an access token using a refresh token.
-pub async fn refresh_access_token(
-    refresh_token: &str,
-) -> PlatformResult<KickTokenResponse> {
+pub async fn refresh_access_token(refresh_token: &str) -> PlatformResult<KickTokenResponse> {
     let client = reqwest::Client::new();
     let response = client
         .post(KICK_TOKEN_URL)
@@ -293,10 +287,7 @@ pub async fn revoke_token(access_token: &str) -> PlatformResult<()> {
         "{}?token={}&token_hint_type=access_token",
         KICK_REVOKE_URL, access_token
     );
-    let response = client
-        .post(&url)
-        .send()
-        .await?;
+    let response = client.post(&url).send().await?;
 
     if !response.status().is_success() {
         let status = response.status();
