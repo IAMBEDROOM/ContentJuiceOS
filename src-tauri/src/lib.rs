@@ -4,6 +4,7 @@ mod credentials;
 mod db;
 mod platform;
 mod rate_limiter;
+mod retry;
 mod server;
 mod settings;
 mod types;
@@ -56,6 +57,9 @@ pub fn run() {
             rate_limiter.start_refill_task();
             app.manage(rate_limiter);
 
+            let retry_service = Arc::new(retry::RetryService::new());
+            app.manage(retry_service);
+
             let http_server = server::HttpServer::start(
                 app.handle().clone(),
                 twitch_auth_state,
@@ -101,6 +105,10 @@ pub fn run() {
             platform::kick::commands::refresh_kick_tokens,
             platform::kick::commands::revoke_kick_auth,
             rate_limiter::commands::get_rate_limit_status,
+            retry::commands::get_platform_health,
+            retry::commands::get_all_platform_health,
+            retry::commands::get_action_queue_stats,
+            retry::commands::drain_action_queue,
             cache::commands::cache_get,
             cache::commands::cache_invalidate,
             cache::commands::cache_stats,

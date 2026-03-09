@@ -220,9 +220,10 @@ pub async fn exchange_code_for_tokens(
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
-        return Err(PlatformError::OAuth(format!(
-            "Token exchange failed (HTTP {status}): {body}"
-        )));
+        return Err(PlatformError::HttpStatus {
+            status: status.as_u16(),
+            body,
+        });
     }
 
     response
@@ -248,9 +249,10 @@ pub async fn refresh_access_token(refresh_token: &str) -> PlatformResult<TwitchT
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
-        return Err(PlatformError::OAuth(format!(
-            "Token refresh failed (HTTP {status}): {body}"
-        )));
+        return Err(PlatformError::HttpStatus {
+            status: status.as_u16(),
+            body,
+        });
     }
 
     response
@@ -272,9 +274,10 @@ pub async fn get_current_user(access_token: &str) -> PlatformResult<TwitchUser> 
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
-        return Err(PlatformError::OAuth(format!(
-            "Failed to fetch user (HTTP {status}): {body}"
-        )));
+        return Err(PlatformError::HttpStatus {
+            status: status.as_u16(),
+            body,
+        });
     }
 
     let users: TwitchUsersResponse = response
@@ -301,9 +304,10 @@ pub async fn revoke_token(access_token: &str) -> PlatformResult<()> {
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
-        return Err(PlatformError::OAuth(format!(
-            "Token revocation failed (HTTP {status}): {body}"
-        )));
+        return Err(PlatformError::HttpStatus {
+            status: status.as_u16(),
+            body,
+        });
     }
 
     Ok(())

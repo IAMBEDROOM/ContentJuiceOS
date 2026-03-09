@@ -10,7 +10,11 @@ use crate::credentials::types::{CredentialKind, OAuthTokens};
 use crate::db::Database;
 use crate::platform::repository;
 use crate::platform::types::{NewPlatformConnection, PlatformConnection};
+use crate::rate_limiter::types::Priority;
+use crate::rate_limiter::RateLimiterService;
+use crate::retry::RetryService;
 use crate::server::HttpServer;
+use crate::types::Platform;
 
 use super::oauth::{
     self, OAuthCallbackParams, TwitchAuthState, TWITCH_REDIRECT_PORTS, TWITCH_SCOPES,
@@ -138,11 +142,16 @@ pub async fn start_twitch_auth(
 }
 
 /// Refresh Twitch tokens for an existing connection.
+///
+/// Uses the retry service for automatic exponential backoff on transient failures
+/// and integrates with the rate limiter to respect Twitch's API limits.
 #[tauri::command]
 pub async fn refresh_twitch_tokens(
     connection_id: String,
     db: State<'_, Arc<Database>>,
     cred_manager: State<'_, CredentialManager>,
+    retry_service: State<'_, Arc<RetryService>>,
+    rate_limiter: State<'_, Arc<RateLimiterService>>,
 ) -> Result<(), String> {
     // Get existing tokens
     let tokens = cred_manager
@@ -152,8 +161,13 @@ pub async fn refresh_twitch_tokens(
 
     let refresh_token = tokens.refresh_token.ok_or("No refresh token available")?;
 
-    // Refresh
-    let new_tokens = oauth::refresh_access_token(&refresh_token)
+    // Refresh with retry + rate limiting
+    let refresh_tok = refresh_token.clone();
+    let new_tokens = retry_service
+        .execute(Platform::Twitch, Priority::Realtime, &rate_limiter, || {
+            let rt = refresh_tok.clone();
+            async move { oauth::refresh_access_token(&rt).await }
+        })
         .await
         .map_err(|e| e.to_string())?;
 

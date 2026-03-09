@@ -3,6 +3,7 @@ use std::fmt;
 use crate::credentials::error::CredentialError;
 use crate::db::error::DbError;
 use crate::rate_limiter::error::RateLimiterError;
+use crate::retry::error::RetryError;
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -11,9 +12,25 @@ pub enum PlatformError {
     NotFound(String),
     OAuth(String),
     Http(String),
+    /// HTTP error with a known status code (enables retry classification).
+    HttpStatus {
+        status: u16,
+        body: String,
+    },
     InvalidState(String),
     Credential(CredentialError),
     RateLimited(String),
+}
+
+impl PlatformError {
+    /// Extract the HTTP status code if this is an HttpStatus variant.
+    #[allow(dead_code)]
+    pub fn http_status_code(&self) -> Option<u16> {
+        match self {
+            Self::HttpStatus { status, .. } => Some(*status),
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Display for PlatformError {
@@ -23,6 +40,9 @@ impl fmt::Display for PlatformError {
             Self::NotFound(msg) => write!(f, "Not found: {msg}"),
             Self::OAuth(msg) => write!(f, "OAuth error: {msg}"),
             Self::Http(msg) => write!(f, "HTTP error: {msg}"),
+            Self::HttpStatus { status, body } => {
+                write!(f, "HTTP {status}: {body}")
+            }
             Self::InvalidState(msg) => write!(f, "Invalid state: {msg}"),
             Self::Credential(e) => write!(f, "Credential error: {e}"),
             Self::RateLimited(msg) => write!(f, "Rate limited: {msg}"),
@@ -53,6 +73,15 @@ impl From<CredentialError> for PlatformError {
 impl From<RateLimiterError> for PlatformError {
     fn from(e: RateLimiterError) -> Self {
         Self::RateLimited(e.to_string())
+    }
+}
+
+impl From<RetryError> for PlatformError {
+    fn from(e: RetryError) -> Self {
+        match e {
+            RetryError::RateLimited(rl) => Self::RateLimited(rl.to_string()),
+            other => Self::Http(other.to_string()),
+        }
     }
 }
 
