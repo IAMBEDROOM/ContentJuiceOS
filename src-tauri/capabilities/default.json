@@ -15,6 +15,16 @@
           "name": "binaries/socket-io-server",
           "sidecar": true,
           "args": true
+        },
+        {
+          "name": "binaries/ffmpeg",
+          "sidecar": true,
+          "args": true
+        },
+        {
+          "name": "binaries/ffprobe",
+          "sidecar": true,
+          "args": true
         }
       ]
     }

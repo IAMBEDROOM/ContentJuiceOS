@@ -1,4 +1,4 @@
-import { createServer } from "http";
+import { createServer, IncomingMessage, ServerResponse } from "http";
 import { Server } from "socket.io";
 import { registerOverlaysNamespace } from "./namespaces/overlays.js";
 import { registerControlNamespace } from "./namespaces/control.js";
@@ -17,6 +17,36 @@ function parsePort(args: string[]): number {
 const preferredPort = parsePort(process.argv);
 const MAX_PORT_RETRIES = 10;
 
+function setupEmitEndpoint(
+  httpServer: ReturnType<typeof createServer>,
+  io: Server,
+): void {
+  httpServer.on("request", (req: IncomingMessage, res: ServerResponse) => {
+    if (req.method === "POST" && req.url === "/emit") {
+      let body = "";
+      req.on("data", (chunk: Buffer) => {
+        body += chunk.toString();
+      });
+      req.on("end", () => {
+        try {
+          const { namespace, event, data } = JSON.parse(body);
+          if (!namespace || !event) {
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: "namespace and event are required" }));
+            return;
+          }
+          io.of(namespace).emit(event, data);
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: true }));
+        } catch {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Invalid JSON body" }));
+        }
+      });
+    }
+  });
+}
+
 function startServer(port: number, attempt: number): void {
   const httpServer = createServer();
   const io = new Server(httpServer, {
@@ -31,6 +61,7 @@ function startServer(port: number, attempt: number): void {
   const controlNsp = io.of("/control");
   registerOverlaysNamespace(overlaysNsp);
   registerControlNamespace(controlNsp, overlaysNsp);
+  setupEmitEndpoint(httpServer, io);
 
   httpServer.on("error", (err: NodeJS.ErrnoException) => {
     if (err.code === "EADDRINUSE" && attempt < MAX_PORT_RETRIES) {

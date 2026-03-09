@@ -1,4 +1,5 @@
 pub mod commands;
+pub mod emit;
 mod http_server;
 mod socket_io_server;
 

@@ -2,6 +2,7 @@ mod backup;
 mod cache;
 mod credentials;
 mod db;
+mod ffmpeg;
 mod platform;
 mod rate_limiter;
 mod retry;
@@ -71,6 +72,11 @@ pub fn run() {
 
             let socket_io_server = server::SocketIoServer::start(app.handle())
                 .expect("Failed to start Socket.IO sidecar");
+
+            let ffmpeg_queue =
+                Arc::new(ffmpeg::FfmpegQueue::new(1, socket_io_server.port()));
+            app.manage(ffmpeg_queue);
+
             app.manage(socket_io_server);
 
             Ok(())
@@ -112,6 +118,11 @@ pub fn run() {
             cache::commands::cache_get,
             cache::commands::cache_invalidate,
             cache::commands::cache_stats,
+            ffmpeg::commands::ffmpeg_submit_job,
+            ffmpeg::commands::ffmpeg_get_job,
+            ffmpeg::commands::ffmpeg_list_jobs,
+            ffmpeg::commands::ffmpeg_cancel_job,
+            ffmpeg::commands::ffprobe_media_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

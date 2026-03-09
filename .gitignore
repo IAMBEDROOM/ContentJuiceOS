@@ -33,13 +33,10 @@ npm-debug.log*
 # Test & coverage
 coverage/
 
-# FFmpeg binaries (bundled at build time)
-ffmpeg/
-ffmpeg.exe
-ffprobe.exe
-
-# Sidecar binaries (built from source)
-src-tauri/binaries/
+# Sidecar binaries (built from source, ignored by default)
+src-tauri/binaries/*
+!src-tauri/binaries/ffmpeg-*
+!src-tauri/binaries/ffprobe-*
 
 # Sidecar build artifacts
 sidecar/socket-io-server/dist/
