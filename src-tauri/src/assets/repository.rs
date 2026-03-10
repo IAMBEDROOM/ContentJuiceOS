@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+
 use rusqlite::Connection;
 
 use super::error::AssetError;
-use super::types::{Asset, AssetType};
+use super::types::{Asset, AssetReference, AssetType};
 
 /// Inserts a new asset record into the `assets` table.
 pub fn insert_asset(conn: &Connection, asset: &Asset) -> Result<(), AssetError> {
@@ -177,6 +179,170 @@ pub fn count_assets(
         .map_err(|e| AssetError::Database(e.to_string()))
 }
 
+/// Finds all references to a given asset across projects, designs, and voice profiles.
+///
+/// Checks four sources:
+/// 1. Projects referencing the asset via `source_video_asset_id` (hard FK)
+/// 2. Projects referencing the asset in their `config` JSON (audio tracks, etc.)
+/// 3. Designs referencing the asset in their `config` JSON
+/// 4. Voice profiles referencing the asset in `sample_asset_ids` JSON
+///
+/// Deduplicates projects found in both FK and config queries.
+pub fn find_asset_references(
+    conn: &Connection,
+    asset_id: &str,
+) -> Result<Vec<AssetReference>, AssetError> {
+    let mut refs: Vec<AssetReference> = Vec::new();
+    // Track project IDs to deduplicate across FK and config queries
+    let mut seen_projects: HashMap<String, bool> = HashMap::new();
+
+    // 1. Projects referencing via source_video_asset_id (hard FK)
+    {
+        let mut stmt = conn
+            .prepare("SELECT id, name FROM projects WHERE source_video_asset_id = ?1")
+            .map_err(|e| AssetError::Database(e.to_string()))?;
+        let rows = stmt
+            .query_map(rusqlite::params![asset_id], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .map_err(|e| AssetError::Database(e.to_string()))?;
+        for row in rows {
+            let (id, name) = row.map_err(|e| AssetError::Database(e.to_string()))?;
+            seen_projects.insert(id.clone(), true);
+            refs.push(AssetReference {
+                ref_type: "project".to_string(),
+                ref_id: id,
+                ref_name: name,
+            });
+        }
+    }
+
+    // 2. Projects referencing in config JSON (audio tracks, etc.)
+    {
+        let mut stmt = conn
+            .prepare("SELECT id, name FROM projects WHERE config LIKE '%' || ?1 || '%'")
+            .map_err(|e| AssetError::Database(e.to_string()))?;
+        let rows = stmt
+            .query_map(rusqlite::params![asset_id], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .map_err(|e| AssetError::Database(e.to_string()))?;
+        for row in rows {
+            let (id, name) = row.map_err(|e| AssetError::Database(e.to_string()))?;
+            if !seen_projects.contains_key(&id) {
+                refs.push(AssetReference {
+                    ref_type: "project".to_string(),
+                    ref_id: id,
+                    ref_name: name,
+                });
+            }
+        }
+    }
+
+    // 3. Designs referencing in config JSON
+    {
+        let mut stmt = conn
+            .prepare("SELECT id, name FROM designs WHERE config LIKE '%' || ?1 || '%'")
+            .map_err(|e| AssetError::Database(e.to_string()))?;
+        let rows = stmt
+            .query_map(rusqlite::params![asset_id], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .map_err(|e| AssetError::Database(e.to_string()))?;
+        for row in rows {
+            let (id, name) = row.map_err(|e| AssetError::Database(e.to_string()))?;
+            refs.push(AssetReference {
+                ref_type: "design".to_string(),
+                ref_id: id,
+                ref_name: name,
+            });
+        }
+    }
+
+    // 4. Voice profiles referencing in sample_asset_ids JSON
+    {
+        let mut stmt = conn
+            .prepare("SELECT id, name FROM voice_profiles WHERE sample_asset_ids LIKE '%' || ?1 || '%'")
+            .map_err(|e| AssetError::Database(e.to_string()))?;
+        let rows = stmt
+            .query_map(rusqlite::params![asset_id], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .map_err(|e| AssetError::Database(e.to_string()))?;
+        for row in rows {
+            let (id, name) = row.map_err(|e| AssetError::Database(e.to_string()))?;
+            refs.push(AssetReference {
+                ref_type: "voice_profile".to_string(),
+                ref_id: id,
+                ref_name: name,
+            });
+        }
+    }
+
+    Ok(refs)
+}
+
+/// Deletes a single asset record from the database.
+///
+/// Returns `NotFound` if no row matched. Catches SQLite FK constraint violations
+/// and returns `DeleteBlocked`.
+pub fn delete_asset(conn: &Connection, asset_id: &str) -> Result<(), AssetError> {
+    match conn.execute("DELETE FROM assets WHERE id = ?1", rusqlite::params![asset_id]) {
+        Ok(changes) => {
+            if changes == 0 {
+                Err(AssetError::NotFound(asset_id.to_string()))
+            } else {
+                Ok(())
+            }
+        }
+        Err(e) => {
+            let err_str = e.to_string();
+            // Detect FK constraint violation via error message or SQLite error code
+            if err_str.contains("FOREIGN KEY constraint failed") {
+                return Err(AssetError::DeleteBlocked(format!(
+                    "Asset {asset_id} is referenced by a project's source video"
+                )));
+            }
+            if let rusqlite::Error::SqliteFailure(ref err, _) = e {
+                if err.extended_code == 787 {
+                    return Err(AssetError::DeleteBlocked(format!(
+                        "Asset {asset_id} is referenced by a project's source video"
+                    )));
+                }
+            }
+            Err(AssetError::Database(err_str))
+        }
+    }
+}
+
+#[allow(dead_code)]
+/// Deletes multiple asset records in a single transaction.
+///
+/// Records FK violations as failures rather than rolling back the entire batch.
+/// Returns the count of successfully deleted rows and any failures.
+pub fn delete_assets_batch(
+    conn: &Connection,
+    asset_ids: &[String],
+) -> Result<(u64, Vec<(String, String)>), AssetError> {
+    let mut deleted: u64 = 0;
+    let mut failures: Vec<(String, String)> = Vec::new();
+
+    for id in asset_ids {
+        match delete_asset(conn, id) {
+            Ok(()) => deleted += 1,
+            Err(AssetError::NotFound(_)) => {
+                failures.push((id.clone(), "Asset not found".to_string()));
+            }
+            Err(AssetError::DeleteBlocked(msg)) => {
+                failures.push((id.clone(), msg));
+            }
+            Err(e) => return Err(e),
+        }
+    }
+
+    Ok((deleted, failures))
+}
+
 /// Parses a DB type string back into an `AssetType` enum.
 pub fn parse_asset_type(s: &str) -> AssetType {
     match s {
@@ -344,6 +510,164 @@ mod tests {
         assert_eq!(count_assets(&conn, None, None).unwrap(), 2);
         assert_eq!(count_assets(&conn, Some(&AssetType::Image), None).unwrap(), 1);
         assert_eq!(count_assets(&conn, None, Some("song")).unwrap(), 1);
+    }
+
+    #[test]
+    fn delete_asset_removes_record() {
+        let conn = setup_test_db();
+        let asset = sample_asset();
+        insert_asset(&conn, &asset).unwrap();
+
+        delete_asset(&conn, &asset.id).unwrap();
+        assert!(get_asset_by_id(&conn, &asset.id).unwrap().is_none());
+    }
+
+    #[test]
+    fn delete_nonexistent_returns_not_found() {
+        let conn = setup_test_db();
+        let result = delete_asset(&conn, "nonexistent-id");
+        assert!(matches!(result, Err(AssetError::NotFound(_))));
+    }
+
+    #[test]
+    fn find_references_design_config() {
+        let conn = setup_test_db();
+        let asset = sample_asset();
+        insert_asset(&conn, &asset).unwrap();
+
+        // Insert a design that references the asset in its config JSON
+        conn.execute(
+            "INSERT INTO designs (id, name, type, config) VALUES (?1, ?2, 'alert', ?3)",
+            rusqlite::params![
+                "design-1",
+                "My Alert",
+                format!(r#"{{"elements":[{{"assetId":"{}"}}]}}"#, asset.id)
+            ],
+        ).unwrap();
+
+        let refs = find_asset_references(&conn, &asset.id).unwrap();
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0].ref_type, "design");
+        assert_eq!(refs[0].ref_name, "My Alert");
+    }
+
+    #[test]
+    fn find_references_project_fk() {
+        let conn = setup_test_db();
+        conn.execute("PRAGMA foreign_keys = ON", []).unwrap();
+        let asset = Asset {
+            id: "video-for-project".to_string(),
+            original_filename: "clip.mp4".to_string(),
+            asset_type: AssetType::Video,
+            format: "mp4".to_string(),
+            file_size: 1000,
+            width: None,
+            height: None,
+            duration: None,
+            tags: vec![],
+            file_path: "video/clip.mp4".to_string(),
+            created_at: "2026-03-10 00:00:00".to_string(),
+        };
+        insert_asset(&conn, &asset).unwrap();
+
+        conn.execute(
+            "INSERT INTO projects (id, name, source_video_asset_id) VALUES ('proj-1', 'My Project', ?1)",
+            rusqlite::params![asset.id],
+        ).unwrap();
+
+        let refs = find_asset_references(&conn, &asset.id).unwrap();
+        assert!(refs.iter().any(|r| r.ref_type == "project" && r.ref_name == "My Project"));
+    }
+
+    #[test]
+    fn find_references_project_audio_track() {
+        let conn = setup_test_db();
+        // Insert a dummy video asset for the FK
+        let video_asset = Asset {
+            id: "video-source".to_string(),
+            original_filename: "src.mp4".to_string(),
+            asset_type: AssetType::Video,
+            format: "mp4".to_string(),
+            file_size: 1000,
+            width: None,
+            height: None,
+            duration: None,
+            tags: vec![],
+            file_path: "video/src.mp4".to_string(),
+            created_at: "2026-03-10 00:00:00".to_string(),
+        };
+        insert_asset(&conn, &video_asset).unwrap();
+
+        let audio_asset = sample_audio_asset();
+        insert_asset(&conn, &audio_asset).unwrap();
+
+        // Project references audio asset in config JSON (audio track)
+        conn.execute(
+            "INSERT INTO projects (id, name, source_video_asset_id, config) VALUES ('proj-2', 'Audio Project', ?1, ?2)",
+            rusqlite::params![
+                video_asset.id,
+                format!(r#"{{"audioTracks":[{{"assetId":"{}"}}]}}"#, audio_asset.id)
+            ],
+        ).unwrap();
+
+        let refs = find_asset_references(&conn, &audio_asset.id).unwrap();
+        assert!(refs.iter().any(|r| r.ref_type == "project" && r.ref_name == "Audio Project"));
+    }
+
+    #[test]
+    fn find_references_voice_profile() {
+        let conn = setup_test_db();
+        let asset = sample_audio_asset();
+        insert_asset(&conn, &asset).unwrap();
+
+        conn.execute(
+            "INSERT INTO voice_profiles (id, name, provider, sample_asset_ids) VALUES ('vp-1', 'My Voice', 'elevenlabs', ?1)",
+            rusqlite::params![format!(r#"["{}"]"#, asset.id)],
+        ).unwrap();
+
+        let refs = find_asset_references(&conn, &asset.id).unwrap();
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0].ref_type, "voice_profile");
+        assert_eq!(refs[0].ref_name, "My Voice");
+    }
+
+    #[test]
+    fn find_references_empty_when_unreferenced() {
+        let conn = setup_test_db();
+        let asset = sample_asset();
+        insert_asset(&conn, &asset).unwrap();
+
+        let refs = find_asset_references(&conn, &asset.id).unwrap();
+        assert!(refs.is_empty());
+    }
+
+    #[test]
+    fn delete_blocked_by_project_fk() {
+        let conn = setup_test_db();
+        conn.execute("PRAGMA foreign_keys = ON", []).unwrap();
+
+        let asset = Asset {
+            id: "video-blocked".to_string(),
+            original_filename: "clip.mp4".to_string(),
+            asset_type: AssetType::Video,
+            format: "mp4".to_string(),
+            file_size: 1000,
+            width: None,
+            height: None,
+            duration: None,
+            tags: vec![],
+            file_path: "video/clip.mp4".to_string(),
+            created_at: "2026-03-10 00:00:00".to_string(),
+        };
+        insert_asset(&conn, &asset).unwrap();
+
+        conn.execute(
+            "INSERT INTO projects (id, name, source_video_asset_id) VALUES ('proj-block', 'Blocking Project', ?1)",
+            rusqlite::params![asset.id],
+        ).unwrap();
+
+        let result = delete_asset(&conn, &asset.id);
+        assert!(matches!(result, Err(AssetError::DeleteBlocked(_))));
     }
 
     #[test]

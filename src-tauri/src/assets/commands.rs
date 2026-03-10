@@ -9,7 +9,7 @@ use crate::user_error::UserFacingError;
 use super::repository;
 use super::service;
 use super::storage;
-use super::types::{Asset, AssetListResponse, AssetType};
+use super::types::{Asset, AssetListResponse, AssetReference, AssetType, DeleteAssetsResponse};
 
 #[tauri::command]
 pub fn get_asset_root(
@@ -104,4 +104,32 @@ pub fn get_asset_file_path(
 
     let absolute = root.join(&asset.file_path);
     Ok(absolute.display().to_string())
+}
+
+#[tauri::command]
+pub fn check_asset_references(
+    id: String,
+    database: State<'_, Arc<Database>>,
+) -> Result<Vec<AssetReference>, String> {
+    service::check_asset_references(&database, &id).map_user_err()
+}
+
+#[tauri::command]
+pub fn delete_asset(
+    id: String,
+    force: bool,
+    app_handle: AppHandle,
+    database: State<'_, Arc<Database>>,
+) -> Result<(), String> {
+    service::delete_asset(&database, &app_handle, &id, force).map_user_err()
+}
+
+#[tauri::command]
+pub fn delete_assets_batch(
+    ids: Vec<String>,
+    force: bool,
+    app_handle: AppHandle,
+    database: State<'_, Arc<Database>>,
+) -> Result<DeleteAssetsResponse, String> {
+    service::delete_assets_batch(&database, &app_handle, &ids, force).map_user_err()
 }

@@ -96,6 +96,31 @@ pub struct AssetListResponse {
     pub total: i64,
 }
 
+/// Describes a reference from another entity (design, project, voice profile) to an asset.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetReference {
+    pub ref_type: String,
+    pub ref_id: String,
+    pub ref_name: String,
+}
+
+/// Response payload for bulk asset deletion.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteAssetsResponse {
+    pub deleted_count: u64,
+    pub failed: Vec<DeleteFailure>,
+}
+
+/// A single asset that could not be deleted in a batch operation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteFailure {
+    pub asset_id: String,
+    pub reason: String,
+}
+
 /// All subdirectories to create under the asset root.
 /// Includes `voice_profiles` which has its own DB table, not part of `AssetType`.
 pub const ALL_SUBDIRECTORIES: &[&str] = &[

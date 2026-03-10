@@ -1,15 +1,19 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
-import type { Asset, AssetType } from '../types/platform';
+import type { Asset, AssetType, AssetReference } from '../types/platform';
 import {
   listAssets,
   importAsset,
   getAssetRoot,
   openImportDialog,
+  checkAssetReferences,
+  deleteAsset,
+  deleteAssetsBatch,
 } from '../lib/assets';
 import AssetToolbar from '../components/AssetToolbar';
 import AssetCard from '../components/AssetCard';
 import AssetRow from '../components/AssetRow';
+import DeleteAssetDialog from '../components/DeleteAssetDialog';
 import './AssetsPage.css';
 
 const PAGE_SIZE = 30;
@@ -25,6 +29,10 @@ export default function AssetsPage() {
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteTargets, setDeleteTargets] = useState<Asset[]>([]);
+  const [deleteRefs, setDeleteRefs] = useState<Map<string, AssetReference[]>>(new Map());
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -102,6 +110,66 @@ export default function AssetsPage() {
     }
   }, [fetchAssets]);
 
+  // Selection handlers
+  const handleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    setSelectedIds(new Set(assets.map((a) => a.id)));
+  }, [assets]);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  // Deletion handlers
+  const handleDeleteRequest = useCallback(async (ids: string[]) => {
+    setError(null);
+    try {
+      const targets = assets.filter((a) => ids.includes(a.id));
+      const refsMap = new Map<string, AssetReference[]>();
+      for (const id of ids) {
+        const refs = await checkAssetReferences(id);
+        if (refs.length > 0) refsMap.set(id, refs);
+      }
+      setDeleteTargets(targets);
+      setDeleteRefs(refsMap);
+      setShowDeleteDialog(true);
+    } catch (e) {
+      setError(String(e));
+    }
+  }, [assets]);
+
+  const handleDeleteConfirm = useCallback(async (force: boolean) => {
+    setShowDeleteDialog(false);
+    setError(null);
+    try {
+      if (deleteTargets.length === 1) {
+        await deleteAsset(deleteTargets[0].id, force);
+      } else {
+        await deleteAssetsBatch(deleteTargets.map((a) => a.id), force);
+      }
+      setSelectedIds(new Set());
+      if (mountedRef.current) await fetchAssets(true);
+    } catch (e) {
+      if (mountedRef.current) setError(String(e));
+    }
+  }, [deleteTargets, fetchAssets]);
+
+  const handleDeleteCancel = useCallback(() => {
+    setShowDeleteDialog(false);
+    setDeleteTargets([]);
+    setDeleteRefs(new Map());
+  }, []);
+
+  const selectionMode = selectedIds.size > 0;
+
   // Drag-and-drop via Tauri webview event
   useEffect(() => {
     const webview = getCurrentWebview();
@@ -139,6 +207,10 @@ export default function AssetsPage() {
         onViewModeChange={setViewMode}
         onImport={handleImport}
         importing={importing}
+        selectedCount={selectedIds.size}
+        onDeleteSelected={() => handleDeleteRequest([...selectedIds])}
+        onSelectAll={handleSelectAll}
+        onClearSelection={handleClearSelection}
       />
 
       {error && <div className="assets-error">{error}</div>}
@@ -161,7 +233,15 @@ export default function AssetsPage() {
       {viewMode === 'grid' ? (
         <div className="assets-grid">
           {assets.map((asset) => (
-            <AssetCard key={asset.id} asset={asset} assetRoot={assetRoot} />
+            <AssetCard
+              key={asset.id}
+              asset={asset}
+              assetRoot={assetRoot}
+              onDelete={(id) => handleDeleteRequest([id])}
+              selected={selectedIds.has(asset.id)}
+              onSelect={handleSelect}
+              selectionMode={selectionMode}
+            />
           ))}
         </div>
       ) : (
@@ -177,7 +257,15 @@ export default function AssetsPage() {
             </div>
           )}
           {assets.map((asset) => (
-            <AssetRow key={asset.id} asset={asset} assetRoot={assetRoot} />
+            <AssetRow
+              key={asset.id}
+              asset={asset}
+              assetRoot={assetRoot}
+              onDelete={(id) => handleDeleteRequest([id])}
+              selected={selectedIds.has(asset.id)}
+              onSelect={handleSelect}
+              selectionMode={selectionMode}
+            />
           ))}
         </div>
       )}
@@ -190,6 +278,15 @@ export default function AssetsPage() {
         >
           {loading ? 'Loading...' : 'Load More'}
         </button>
+      )}
+
+      {showDeleteDialog && (
+        <DeleteAssetDialog
+          assets={deleteTargets}
+          references={deleteRefs}
+          onConfirm={handleDeleteConfirm}
+          onCancel={handleDeleteCancel}
+        />
       )}
     </div>
   );

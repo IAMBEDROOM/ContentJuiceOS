@@ -13,9 +13,13 @@ function formatSize(bytes: number): string {
 interface AssetCardProps {
   asset: Asset;
   assetRoot: string;
+  onDelete?: (id: string) => void;
+  selected?: boolean;
+  onSelect?: (id: string) => void;
+  selectionMode?: boolean;
 }
 
-export default function AssetCard({ asset, assetRoot }: AssetCardProps) {
+export default function AssetCard({ asset, assetRoot, onDelete, selected, onSelect, selectionMode }: AssetCardProps) {
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const absolutePath = assetRoot + '/' + asset.filePath;
@@ -36,7 +40,27 @@ export default function AssetCard({ asset, assetRoot }: AssetCardProps) {
   const handleAudioEnded = () => setPlaying(false);
 
   return (
-    <div className="asset-card">
+    <div className={`asset-card${selected ? ' selected' : ''}`}>
+      {selectionMode && (
+        <label className="asset-card-checkbox" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={selected ?? false}
+            onChange={() => onSelect?.(asset.id)}
+          />
+        </label>
+      )}
+      {onDelete && (
+        <button
+          className="asset-card-delete-btn"
+          onClick={(e) => { e.stopPropagation(); onDelete(asset.id); }}
+          title="Delete asset"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+          </svg>
+        </button>
+      )}
       <div className="asset-card-preview">
         {asset.assetType === 'image' && (
           <img src={fileUrl} alt={asset.originalFilename} className="asset-card-img" loading="lazy" />

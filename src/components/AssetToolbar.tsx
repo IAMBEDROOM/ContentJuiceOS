@@ -21,6 +21,10 @@ interface AssetToolbarProps {
   onViewModeChange: (mode: 'grid' | 'list') => void;
   onImport: () => void;
   importing: boolean;
+  selectedCount?: number;
+  onDeleteSelected?: () => void;
+  onSelectAll?: () => void;
+  onClearSelection?: () => void;
 }
 
 export default function AssetToolbar({
@@ -32,6 +36,10 @@ export default function AssetToolbar({
   onViewModeChange,
   onImport,
   importing,
+  selectedCount = 0,
+  onDeleteSelected,
+  onSelectAll,
+  onClearSelection,
 }: AssetToolbarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -72,6 +80,21 @@ export default function AssetToolbar({
       </div>
 
       <div className="asset-toolbar-right">
+        {selectedCount > 0 && (
+          <div className="asset-selection-actions">
+            <button className="btn btn-delete-selected" onClick={onDeleteSelected}>
+              Delete {selectedCount} selected
+            </button>
+            <button className="btn btn-clear-selection" onClick={onClearSelection}>
+              Clear
+            </button>
+          </div>
+        )}
+        {selectedCount === 0 && onSelectAll && (
+          <button className="btn btn-select-all" onClick={onSelectAll}>
+            Select
+          </button>
+        )}
         <div className="asset-view-toggle">
           <button
             className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}

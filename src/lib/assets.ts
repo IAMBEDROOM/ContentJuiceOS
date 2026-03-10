@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 
-import type { Asset, AssetListResponse, AssetType } from '../types/platform';
+import type { Asset, AssetListResponse, AssetReference, AssetType, DeleteAssetsResponse } from '../types/platform';
 
 // ---------------------------------------------------------------------------
 // Asset directory management
@@ -45,6 +45,25 @@ export async function importAsset(sourcePath: string): Promise<Asset> {
 /** Returns the absolute file path for an asset by ID. */
 export async function getAssetFilePath(id: string): Promise<string> {
   return invoke<string>('get_asset_file_path', { id });
+}
+
+// ---------------------------------------------------------------------------
+// Asset deletion
+// ---------------------------------------------------------------------------
+
+/** Checks what other entities reference a given asset. */
+export async function checkAssetReferences(id: string): Promise<AssetReference[]> {
+  return invoke<AssetReference[]>('check_asset_references', { id });
+}
+
+/** Deletes a single asset (DB + file). Set force=true to delete even if referenced. */
+export async function deleteAsset(id: string, force = false): Promise<void> {
+  return invoke<void>('delete_asset', { id, force });
+}
+
+/** Deletes multiple assets. Returns count of deleted and any failures. */
+export async function deleteAssetsBatch(ids: string[], force = false): Promise<DeleteAssetsResponse> {
+  return invoke<DeleteAssetsResponse>('delete_assets_batch', { ids, force });
 }
 
 // ---------------------------------------------------------------------------

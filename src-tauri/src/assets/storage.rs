@@ -108,6 +108,26 @@ pub fn import_file(
     })
 }
 
+/// Deletes a file from the asset directory.
+///
+/// Resolves `asset_root.join(relative_path)` and removes the file.
+/// If the file is already gone (`NotFound`), logs a warning and returns `Ok(())`
+/// so the DB record can still be cleaned up.
+pub fn delete_file(asset_root: &Path, relative_path: &str) -> Result<(), AssetError> {
+    let full_path = asset_root.join(relative_path);
+    match fs::remove_file(&full_path) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            log::warn!(
+                "Asset file already missing from disk: {}",
+                full_path.display()
+            );
+            Ok(())
+        }
+        Err(e) => Err(AssetError::Io(e)),
+    }
+}
+
 /// Sanitizes a filename stem by replacing dangerous characters with underscores.
 fn sanitize_filename(stem: &str) -> String {
     let result: String = stem
@@ -310,6 +330,33 @@ mod tests {
         assert!(Uuid::parse_str(parts[0]).is_ok());
         // Second part should be "photo.png"
         assert_eq!(parts[1], "photo.png");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn delete_file_removes_from_disk() {
+        let dir = temp_test_dir("delete_file");
+        ensure_directories(&dir).unwrap();
+
+        let file_path = dir.join("images").join("test_file.png");
+        fs::write(&file_path, b"data").unwrap();
+        assert!(file_path.exists());
+
+        delete_file(&dir, "images/test_file.png").unwrap();
+        assert!(!file_path.exists());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn delete_file_missing_is_ok() {
+        let dir = temp_test_dir("delete_missing");
+        ensure_directories(&dir).unwrap();
+
+        // File doesn't exist — should succeed gracefully
+        let result = delete_file(&dir, "images/nonexistent.png");
+        assert!(result.is_ok());
 
         let _ = fs::remove_dir_all(&dir);
     }

@@ -68,6 +68,19 @@ export const AssetListResponseSchema = z.object({
 });
 export type AssetListResponse = z.infer<typeof AssetListResponseSchema>;
 
+// ── Asset Deletion ──────────────────────────────────────────────────
+
+export interface AssetReference {
+  refType: string;
+  refId: string;
+  refName: string;
+}
+
+export interface DeleteAssetsResponse {
+  deletedCount: number;
+  failed: { assetId: string; reason: string }[];
+}
+
 // ── Timestamps Mixin ─────────────────────────────────────────────────
 
 export const TimestampsSchema = z.object({

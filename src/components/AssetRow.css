@@ -2,7 +2,7 @@
 
 .asset-row {
   display: grid;
-  grid-template-columns: 40px 1fr 80px 80px 60px 100px;
+  grid-template-columns: 40px 1fr 80px 80px 60px 100px 32px;
   align-items: center;
   gap: 12px;
   padding: 8px 12px;
@@ -12,6 +12,49 @@
 
 .asset-row:hover {
   background-color: rgba(255, 255, 255, 0.04);
+}
+
+.asset-row.selected {
+  background-color: rgba(0, 229, 255, 0.06);
+}
+
+/* ── Selection Checkbox ───────────────────────────────────────────── */
+
+.asset-row-checkbox {
+  cursor: pointer;
+}
+
+.asset-row-checkbox input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--color-accent-primary);
+}
+
+/* ── Delete Button ────────────────────────────────────────────────── */
+
+.asset-row-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #FF007F;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background-color 0.15s;
+}
+
+.asset-row:hover .asset-row-delete-btn {
+  opacity: 0.7;
+}
+
+.asset-row-delete-btn:hover {
+  opacity: 1;
+  background: rgba(255, 0, 127, 0.12);
 }
 
 /* ── Thumbnail ─────────────────────────────────────────────────────── */

@@ -1,5 +1,7 @@
 use std::fmt;
 
+use super::types::AssetReference;
+
 /// Errors that can occur during asset storage operations.
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -22,6 +24,15 @@ pub enum AssetError {
     MetadataExtraction(String),
     /// Database operation failed during asset insert/query
     Database(String),
+    /// Asset ID does not exist in the database
+    NotFound(String),
+    /// Asset is referenced by other entities and force was not set
+    AssetInUse {
+        asset_id: String,
+        references: Vec<AssetReference>,
+    },
+    /// Deletion blocked by a foreign key constraint (e.g. project source video)
+    DeleteBlocked(String),
 }
 
 impl fmt::Display for AssetError {
@@ -42,6 +53,15 @@ impl fmt::Display for AssetError {
             ),
             Self::MetadataExtraction(msg) => write!(f, "Metadata extraction failed: {msg}"),
             Self::Database(msg) => write!(f, "Asset database error: {msg}"),
+            Self::NotFound(id) => write!(f, "Asset not found: {id}"),
+            Self::AssetInUse { asset_id, references } => {
+                write!(
+                    f,
+                    "Asset {asset_id} is in use by {} reference(s)",
+                    references.len()
+                )
+            }
+            Self::DeleteBlocked(msg) => write!(f, "Asset deletion blocked: {msg}"),
         }
     }
 }

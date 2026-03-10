@@ -135,3 +135,46 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* ── Selection Actions ────────────────────────────────────────────── */
+
+.asset-selection-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-delete-selected {
+  padding: 7px 16px;
+  border: none;
+  border-radius: 6px;
+  background-color: #FF007F;
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn-delete-selected:hover {
+  opacity: 0.85;
+}
+
+.btn-clear-selection,
+.btn-select-all {
+  padding: 7px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.btn-clear-selection:hover,
+.btn-select-all:hover {
+  opacity: 1;
+}

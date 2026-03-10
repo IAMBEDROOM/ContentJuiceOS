@@ -9,7 +9,7 @@ use crate::ffmpeg::probe::probe_media;
 use super::error::AssetError;
 use super::repository;
 use super::storage;
-use super::types::{Asset, AssetType};
+use super::types::{Asset, AssetReference, AssetType, DeleteAssetsResponse, DeleteFailure};
 use super::validation;
 
 /// Imports a file into the asset library.
@@ -88,6 +88,191 @@ pub async fn import_asset_from_path(
 
     // 10. Return completed asset
     Ok(asset)
+}
+
+/// Checks what other entities reference a given asset.
+pub fn check_asset_references(
+    database: &Database,
+    asset_id: &str,
+) -> Result<Vec<AssetReference>, AssetError> {
+    let conn = database
+        .conn
+        .lock()
+        .map_err(|e| AssetError::Database(format!("Failed to lock database: {e}")))?;
+    repository::find_asset_references(&conn, asset_id)
+}
+
+/// Deletes a single asset (DB record + file on disk).
+///
+/// Reference checking logic:
+/// - If the asset is a project's source video (hard FK) → always blocked (`DeleteBlocked`)
+/// - If other references exist and `force == false` → returns `AssetInUse`
+/// - If other references exist and `force == true` → deletes anyway (broken refs accepted)
+pub fn delete_asset(
+    database: &Database,
+    app_handle: &AppHandle,
+    asset_id: &str,
+    force: bool,
+) -> Result<(), AssetError> {
+    // Resolve asset root first (this locks DB internally, then releases)
+    let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| AssetError::SettingsError(format!("Failed to resolve app data dir: {e}")))?;
+    let asset_root = storage::resolve_asset_root(database, &app_data_dir)?;
+
+    let conn = database
+        .conn
+        .lock()
+        .map_err(|e| AssetError::Database(format!("Failed to lock database: {e}")))?;
+
+    // 1. Verify asset exists and get its file_path
+    let asset = repository::get_asset_by_id(&conn, asset_id)?
+        .ok_or_else(|| AssetError::NotFound(asset_id.to_string()))?;
+
+    // 2. Check references
+    let refs = repository::find_asset_references(&conn, asset_id)?;
+
+    if !refs.is_empty() {
+        // Check if it's a project source video (hard FK)
+        let is_source_video: bool = conn
+            .query_row(
+                "SELECT COUNT(*) FROM projects WHERE source_video_asset_id = ?1",
+                rusqlite::params![asset_id],
+                |row| row.get::<_, i64>(0),
+            )
+            .map_err(|e| AssetError::Database(e.to_string()))?
+            > 0;
+
+        if is_source_video {
+            return Err(AssetError::DeleteBlocked(format!(
+                "Asset {asset_id} is used as a project source video. Delete the project first."
+            )));
+        }
+
+        if !force {
+            return Err(AssetError::AssetInUse {
+                asset_id: asset_id.to_string(),
+                references: refs,
+            });
+        }
+    }
+
+    // 3. Delete DB record
+    repository::delete_asset(&conn, asset_id)?;
+
+    // 4. Delete file from disk (drop conn first since delete_file doesn't need it)
+    drop(conn);
+    storage::delete_file(&asset_root, &asset.file_path)?;
+
+    Ok(())
+}
+
+/// Deletes multiple assets with reference checking and file cleanup.
+///
+/// For each asset:
+/// - Project source video references → added to `failed` list (always blocked)
+/// - Other references + `force == false` → returns `AssetInUse` for the whole batch
+/// - Otherwise → deleted from DB and disk
+pub fn delete_assets_batch(
+    database: &Database,
+    app_handle: &AppHandle,
+    asset_ids: &[String],
+    force: bool,
+) -> Result<DeleteAssetsResponse, AssetError> {
+    // Pre-compute asset root
+    let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| AssetError::SettingsError(format!("Failed to resolve app data dir: {e}")))?;
+    let asset_root = storage::resolve_asset_root(database, &app_data_dir)?;
+
+    let conn = database
+        .conn
+        .lock()
+        .map_err(|e| AssetError::Database(format!("Failed to lock database: {e}")))?;
+
+    let mut deleted_count: u64 = 0;
+    let mut failed: Vec<DeleteFailure> = Vec::new();
+    let mut all_soft_refs: Vec<AssetReference> = Vec::new();
+
+    // First pass: categorize each asset
+    let mut deletable: Vec<(String, String)> = Vec::new(); // (id, file_path)
+
+    for id in asset_ids {
+        // Check if asset exists
+        let asset = match repository::get_asset_by_id(&conn, id)? {
+            Some(a) => a,
+            None => {
+                failed.push(DeleteFailure {
+                    asset_id: id.clone(),
+                    reason: "Asset not found".to_string(),
+                });
+                continue;
+            }
+        };
+
+        let refs = repository::find_asset_references(&conn, id)?;
+
+        // Check for hard FK (project source video)
+        let is_source_video: bool = conn
+            .query_row(
+                "SELECT COUNT(*) FROM projects WHERE source_video_asset_id = ?1",
+                rusqlite::params![id],
+                |row| row.get::<_, i64>(0),
+            )
+            .map_err(|e| AssetError::Database(e.to_string()))?
+            > 0;
+
+        if is_source_video {
+            failed.push(DeleteFailure {
+                asset_id: id.clone(),
+                reason: "Asset is a project source video. Delete the project first.".to_string(),
+            });
+            continue;
+        }
+
+        if !refs.is_empty() && !force {
+            all_soft_refs.extend(refs);
+            // Don't fail individual assets — we'll return AssetInUse for the whole batch
+            continue;
+        }
+
+        deletable.push((id.clone(), asset.file_path.clone()));
+    }
+
+    // If we have soft refs and force is false, return AssetInUse
+    if !all_soft_refs.is_empty() && !force {
+        return Err(AssetError::AssetInUse {
+            asset_id: "batch".to_string(),
+            references: all_soft_refs,
+        });
+    }
+
+    // Second pass: delete all deletable assets
+    for (id, file_path) in &deletable {
+        match repository::delete_asset(&conn, id) {
+            Ok(()) => {
+                deleted_count += 1;
+                // Best-effort file deletion (don't fail the batch if file is missing)
+                if let Err(e) = storage::delete_file(&asset_root, file_path) {
+                    log::warn!("Failed to delete file for asset {id}: {e}");
+                }
+            }
+            Err(AssetError::DeleteBlocked(msg)) => {
+                failed.push(DeleteFailure {
+                    asset_id: id.clone(),
+                    reason: msg,
+                });
+            }
+            Err(e) => return Err(e),
+        }
+    }
+
+    Ok(DeleteAssetsResponse {
+        deleted_count,
+        failed,
+    })
 }
 
 /// Extracts width, height, and duration from a media file using ffprobe.

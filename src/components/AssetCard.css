@@ -7,10 +7,61 @@
   display: flex;
   flex-direction: column;
   transition: box-shadow 0.15s;
+  position: relative;
 }
 
 .asset-card:hover {
   box-shadow: 0 0 0 1px rgba(0, 229, 255, 0.25);
+}
+
+.asset-card.selected {
+  box-shadow: 0 0 0 2px var(--color-accent-primary);
+}
+
+/* ── Delete Button (hover overlay) ────────────────────────────────── */
+
+.asset-card-delete-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #FF007F;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.asset-card:hover .asset-card-delete-btn {
+  opacity: 1;
+}
+
+.asset-card-delete-btn:hover {
+  background: rgba(255, 0, 127, 0.2);
+}
+
+/* ── Selection Checkbox ───────────────────────────────────────────── */
+
+.asset-card-checkbox {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  cursor: pointer;
+}
+
+.asset-card-checkbox input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--color-accent-primary);
 }
 
 /* ── Preview Area ──────────────────────────────────────────────────── */

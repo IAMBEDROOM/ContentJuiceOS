@@ -67,7 +67,16 @@ impl From<AssetError> for UserError {
                 "Could not read file metadata. The file may be corrupted.".to_string()
             }
             AssetError::Database(_) => {
-                "A database error occurred while importing the asset.".to_string()
+                "A database error occurred while managing the asset.".to_string()
+            }
+            AssetError::NotFound(id) => format!("Asset not found: {id}"),
+            AssetError::AssetInUse { .. } => {
+                "This asset is in use by other items. Use force-delete to remove it anyway."
+                    .to_string()
+            }
+            AssetError::DeleteBlocked(_) => {
+                "This asset cannot be deleted because it is a project's source video. Delete the project first."
+                    .to_string()
             }
         };
         UserError::new(msg, e)

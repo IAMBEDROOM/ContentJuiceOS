@@ -137,6 +137,9 @@ pub fn run() {
             assets::commands::import_asset,
             assets::commands::list_assets,
             assets::commands::get_asset_file_path,
+            assets::commands::check_asset_references,
+            assets::commands::delete_asset,
+            assets::commands::delete_assets_batch,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
