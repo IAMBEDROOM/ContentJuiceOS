@@ -36,6 +36,12 @@ jobs:
       - name: Check formatting
         working-directory: src-tauri
         run: cargo fmt -- --check
+      - name: Create placeholder sidecar binaries for Linux
+        run: |
+          for bin in socket-io-server ffmpeg ffprobe; do
+            touch "src-tauri/binaries/${bin}-x86_64-unknown-linux-gnu"
+            chmod +x "src-tauri/binaries/${bin}-x86_64-unknown-linux-gnu"
+          done
       - name: Run clippy
         working-directory: src-tauri
         run: cargo clippy -- -D warnings
@@ -63,6 +69,12 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      - name: Create placeholder sidecar binaries for Linux
+        run: |
+          for bin in socket-io-server ffmpeg ffprobe; do
+            touch "src-tauri/binaries/${bin}-x86_64-unknown-linux-gnu"
+            chmod +x "src-tauri/binaries/${bin}-x86_64-unknown-linux-gnu"
+          done
       - name: Check Rust compiles
         working-directory: src-tauri
         run: cargo check
