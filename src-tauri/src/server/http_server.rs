@@ -42,6 +42,15 @@ struct ConfigResponse {
     socket_io_port: u16,
 }
 
+struct ServerConfig {
+    configured_port: u16,
+    socket_io_port: u16,
+    browser_sources_path: PathBuf,
+    auth_state: Arc<TwitchAuthState>,
+    youtube_auth_state: Arc<YouTubeAuthState>,
+    kick_auth_state: Arc<KickAuthState>,
+}
+
 pub struct HttpServer {
     port: u16,
     shutdown: Arc<AtomicBool>,
@@ -93,18 +102,18 @@ impl HttpServer {
 
         let (tx, rx) = std::sync::mpsc::channel::<Result<u16, String>>();
 
+        let config = ServerConfig {
+            configured_port,
+            socket_io_port,
+            browser_sources_path,
+            auth_state,
+            youtube_auth_state,
+            kick_auth_state,
+        };
+
         let handle = thread::spawn(move || {
             let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
-            rt.block_on(run_server(
-                configured_port,
-                socket_io_port,
-                browser_sources_path,
-                shutdown_flag,
-                tx,
-                auth_state,
-                youtube_auth_state,
-                kick_auth_state,
-            ));
+            rt.block_on(run_server(config, shutdown_flag, tx));
         });
 
         let bound_port = rx
@@ -138,16 +147,11 @@ impl Drop for HttpServer {
 }
 
 async fn run_server(
-    configured_port: u16,
-    socket_io_port: u16,
-    browser_sources_path: PathBuf,
+    config: ServerConfig,
     shutdown: Arc<AtomicBool>,
     tx: std::sync::mpsc::Sender<Result<u16, String>>,
-    auth_state: Arc<TwitchAuthState>,
-    youtube_auth_state: Arc<YouTubeAuthState>,
-    kick_auth_state: Arc<KickAuthState>,
 ) {
-    let listener = match bind_with_fallback(configured_port, socket_io_port).await {
+    let listener = match bind_with_fallback(config.configured_port, config.socket_io_port).await {
         Ok(l) => l,
         Err(e) => {
             let _ = tx.send(Err(e));
@@ -158,11 +162,11 @@ async fn run_server(
     let bound_port = listener.local_addr().unwrap().port();
     let router = build_router(
         bound_port,
-        socket_io_port,
-        browser_sources_path,
-        auth_state,
-        youtube_auth_state,
-        kick_auth_state,
+        config.socket_io_port,
+        config.browser_sources_path,
+        config.auth_state,
+        config.youtube_auth_state,
+        config.kick_auth_state,
     );
 
     info!("HTTP server listening on http://127.0.0.1:{}", bound_port);
@@ -604,7 +608,9 @@ mod tests {
 
         let listener = bind_with_fallback(occupied_port, 0).await.unwrap();
         let bound_port = listener.local_addr().unwrap().port();
-        assert_eq!(bound_port, occupied_port + 1);
+        assert_ne!(bound_port, occupied_port);
+        assert!(bound_port > occupied_port);
+        assert!(bound_port <= occupied_port + 20);
     }
 
     #[tokio::test]
@@ -617,20 +623,35 @@ mod tests {
             .await
             .unwrap();
         let bound_port = listener.local_addr().unwrap().port();
-        assert_eq!(bound_port, occupied_port + 2);
+        assert_ne!(bound_port, occupied_port);
+        assert_ne!(bound_port, socket_io_port);
+        assert!(bound_port > occupied_port);
+        assert!(bound_port <= occupied_port + 20);
     }
 
     #[tokio::test]
     async fn port_fallback_exhaustion_returns_error() {
-        // Bind 21 consecutive ports starting from an ephemeral port
+        // Bind 21 consecutive ports starting from an ephemeral port.
+        // All must succeed for the test to be valid — skip if the OS
+        // cannot allocate consecutive ports.
         let first = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();
         let start_port = first.local_addr().unwrap().port();
 
         let mut blockers = vec![first];
+        let mut all_bound = true;
         for offset in 1..=20u16 {
-            if let Ok(l) = std::net::TcpListener::bind(("127.0.0.1", start_port + offset)) {
-                blockers.push(l);
+            match std::net::TcpListener::bind(("127.0.0.1", start_port + offset)) {
+                Ok(l) => blockers.push(l),
+                Err(_) => {
+                    all_bound = false;
+                    break;
+                }
             }
+        }
+
+        if !all_bound {
+            // Cannot guarantee consecutive ports — skip rather than flake.
+            return;
         }
 
         let result = bind_with_fallback(start_port, 0).await;

@@ -5,12 +5,7 @@ import { z } from 'zod';
 export const PlatformSchema = z.enum(['twitch', 'youtube', 'kick']);
 export type Platform = z.infer<typeof PlatformSchema>;
 
-export const ConnectionStatusSchema = z.enum([
-  'connected',
-  'disconnected',
-  'expired',
-  'revoked',
-]);
+export const ConnectionStatusSchema = z.enum(['connected', 'disconnected', 'expired', 'revoked']);
 export type ConnectionStatus = z.infer<typeof ConnectionStatusSchema>;
 
 export const PlatformConnectionSchema = z.object({
