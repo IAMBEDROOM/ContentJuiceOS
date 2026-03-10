@@ -86,10 +86,7 @@ mod tests {
     use std::sync::Arc;
 
     fn test_db() -> Arc<Database> {
-        let tmp = std::env::temp_dir().join(format!(
-            "cjos_audit_test_{}",
-            uuid::Uuid::new_v4()
-        ));
+        let tmp = std::env::temp_dir().join(format!("cjos_audit_test_{}", uuid::Uuid::new_v4()));
         let _ = std::fs::create_dir_all(&tmp);
         Arc::new(Database::initialize(&tmp).unwrap())
     }
@@ -97,7 +94,13 @@ mod tests {
     #[test]
     fn log_and_query_audit_event() {
         let db = test_db();
-        log_audit(&db, AuditEvent::AuthCompleted, Some("twitch"), "user123", true);
+        log_audit(
+            &db,
+            AuditEvent::AuthCompleted,
+            Some("twitch"),
+            "user123",
+            true,
+        );
 
         let conn = db.conn.lock().unwrap();
         let (event_type, platform, details, success): (String, String, String, i32) = conn

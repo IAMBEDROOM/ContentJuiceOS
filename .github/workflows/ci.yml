@@ -24,6 +24,13 @@ jobs:
   lint-rust:
     name: Lint Rust
     runs-on: ubuntu-latest
+    env:
+      KICK_CLIENT_ID: ci-placeholder
+      KICK_CLIENT_SECRET: ci-placeholder
+      TWITCH_CLIENT_ID: ci-placeholder
+      TWITCH_CLIENT_SECRET: ci-placeholder
+      YOUTUBE_CLIENT_ID: ci-placeholder
+      YOUTUBE_CLIENT_SECRET: ci-placeholder
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -36,6 +43,12 @@ jobs:
       - name: Check formatting
         working-directory: src-tauri
         run: cargo fmt -- --check
+      - name: Create placeholder sidecar binaries for Linux
+        run: |
+          for bin in socket-io-server ffmpeg ffprobe; do
+            touch "src-tauri/binaries/${bin}-x86_64-unknown-linux-gnu"
+            chmod +x "src-tauri/binaries/${bin}-x86_64-unknown-linux-gnu"
+          done
       - name: Run clippy
         working-directory: src-tauri
         run: cargo clippy -- -D warnings
@@ -47,6 +60,13 @@ jobs:
     name: Build Frontend
     runs-on: ubuntu-latest
     needs: [lint-frontend, lint-rust]
+    env:
+      KICK_CLIENT_ID: ci-placeholder
+      KICK_CLIENT_SECRET: ci-placeholder
+      TWITCH_CLIENT_ID: ci-placeholder
+      TWITCH_CLIENT_SECRET: ci-placeholder
+      YOUTUBE_CLIENT_ID: ci-placeholder
+      YOUTUBE_CLIENT_SECRET: ci-placeholder
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -63,6 +83,12 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      - name: Create placeholder sidecar binaries for Linux
+        run: |
+          for bin in socket-io-server ffmpeg ffprobe; do
+            touch "src-tauri/binaries/${bin}-x86_64-unknown-linux-gnu"
+            chmod +x "src-tauri/binaries/${bin}-x86_64-unknown-linux-gnu"
+          done
       - name: Check Rust compiles
         working-directory: src-tauri
         run: cargo check

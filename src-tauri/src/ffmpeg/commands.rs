@@ -66,15 +66,13 @@ pub async fn ffmpeg_submit_job(
     // Auto-probe duration if not provided
     let duration = match duration_ms {
         Some(d) => Some(d),
-        None => {
-            match probe::probe_media(&app_handle, &input_path).await {
-                Ok(info) => info.duration_ms,
-                Err(e) => {
-                    log::warn!("Could not probe input for duration: {e}");
-                    None
-                }
+        None => match probe::probe_media(&app_handle, &input_path).await {
+            Ok(info) => info.duration_ms,
+            Err(e) => {
+                log::warn!("Could not probe input for duration: {e}");
+                None
             }
-        }
+        },
     };
 
     let job_id = queue

@@ -61,7 +61,8 @@ export default function PlatformCard({
   const isConnected = connection?.status === 'connected';
   const isExpired = connection?.status === 'expired';
   const isRevoked = connection?.status === 'revoked';
-  const showConnect = (!connection || connection.status === 'disconnected' || isRevoked) && phase !== 'authorizing';
+  const showConnect =
+    (!connection || connection.status === 'disconnected' || isRevoked) && phase !== 'authorizing';
 
   return (
     <div className="platform-card" style={{ borderLeftColor: config.brandColor }}>
@@ -70,7 +71,10 @@ export default function PlatformCard({
           <span className="status-dot" style={{ backgroundColor: config.brandColor }} />
           <span className="platform-card-label">{config.label}</span>
         </div>
-        <span className="platform-status-pill" style={{ backgroundColor: `${status.color}22`, color: status.color }}>
+        <span
+          className="platform-status-pill"
+          style={{ backgroundColor: `${status.color}22`, color: status.color }}
+        >
           <span className="status-dot" style={{ backgroundColor: status.color }} />
           {status.label}
         </span>
@@ -111,7 +115,9 @@ export default function PlatformCard({
           {connection.lastRefreshedAt && (
             <div className="platform-detail">
               <span className="platform-detail-label">Last Refreshed</span>
-              <span className="platform-detail-value">{formatDate(connection.lastRefreshedAt)}</span>
+              <span className="platform-detail-value">
+                {formatDate(connection.lastRefreshedAt)}
+              </span>
             </div>
           )}
         </div>
@@ -124,9 +130,7 @@ export default function PlatformCard({
           </button>
         )}
 
-        {phase === 'authorizing' && (
-          <span className="platform-authorizing">Authorizing...</span>
-        )}
+        {phase === 'authorizing' && <span className="platform-authorizing">Authorizing...</span>}
 
         {isExpired && (
           <button className="btn btn-refresh" onClick={onRefresh}>

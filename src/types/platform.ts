@@ -5,12 +5,7 @@ import { z } from 'zod';
 export const PlatformSchema = z.enum(['twitch', 'youtube', 'kick']);
 export type Platform = z.infer<typeof PlatformSchema>;
 
-export const ConnectionStatusSchema = z.enum([
-  'connected',
-  'disconnected',
-  'expired',
-  'revoked',
-]);
+export const ConnectionStatusSchema = z.enum(['connected', 'disconnected', 'expired', 'revoked']);
 export type ConnectionStatus = z.infer<typeof ConnectionStatusSchema>;
 
 export const PlatformConnectionSchema = z.object({
@@ -55,18 +50,36 @@ export type CaptionFormat = z.infer<typeof CaptionFormatSchema>;
 export const AssetSchema = z.object({
   id: z.string().uuid(),
   originalFilename: z.string(),
-  type: AssetTypeSchema,
+  assetType: AssetTypeSchema,
   format: z.string(),
   fileSize: z.number().int().nonnegative(),
-  dimensions: z
-    .object({ width: z.number().int().positive(), height: z.number().int().positive() })
-    .optional(),
-  duration: z.number().nonnegative().optional(),
+  width: z.number().int().positive().nullable().optional(),
+  height: z.number().int().positive().nullable().optional(),
+  duration: z.number().nonnegative().nullable().optional(),
   tags: z.array(z.string()).default([]),
   filePath: z.string(),
-  createdAt: z.string().datetime(),
+  createdAt: z.string(),
 });
 export type Asset = z.infer<typeof AssetSchema>;
+
+export const AssetListResponseSchema = z.object({
+  assets: z.array(AssetSchema),
+  total: z.number().int().nonnegative(),
+});
+export type AssetListResponse = z.infer<typeof AssetListResponseSchema>;
+
+// ── Asset Deletion ──────────────────────────────────────────────────
+
+export interface AssetReference {
+  refType: string;
+  refId: string;
+  refName: string;
+}
+
+export interface DeleteAssetsResponse {
+  deletedCount: number;
+  failed: { assetId: string; reason: string }[];
+}
 
 // ── Timestamps Mixin ─────────────────────────────────────────────────
 

@@ -160,174 +160,173 @@ fn try_run_next(
     child_handles: ChildHandleMap,
     socket_io_port: u16,
 ) -> Pin<Box<dyn Future<Output = ()> + Send>> {
-  Box::pin(async move {
-    let current = running_count.load(Ordering::Relaxed);
-    if current >= max_concurrent {
-        return;
-    }
+    Box::pin(async move {
+        let current = running_count.load(Ordering::Relaxed);
+        if current >= max_concurrent {
+            return;
+        }
 
-    // Find highest-priority queued job
-    let next_job_id = {
-        let jobs_guard = jobs.lock().await;
-        jobs_guard
-            .values()
-            .filter(|j| j.state == JobState::Queued)
-            .max_by_key(|j| (j.priority, std::cmp::Reverse(j.created_at)))
-            .map(|j| j.id.clone())
-    };
+        // Find highest-priority queued job
+        let next_job_id = {
+            let jobs_guard = jobs.lock().await;
+            jobs_guard
+                .values()
+                .filter(|j| j.state == JobState::Queued)
+                .max_by_key(|j| (j.priority, std::cmp::Reverse(j.created_at)))
+                .map(|j| j.id.clone())
+        };
 
-    let job_id = match next_job_id {
-        Some(id) => id,
-        None => return,
-    };
-
-    // Transition to Running
-    let (args, duration_ms) = {
-        let mut jobs_guard = jobs.lock().await;
-        let job = match jobs_guard.get_mut(&job_id) {
-            Some(j) => j,
+        let job_id = match next_job_id {
+            Some(id) => id,
             None => return,
         };
-        job.state = JobState::Running;
-        job.started_at = Some(chrono::Utc::now());
-        (job.command_args.clone(), job.duration_ms)
-    };
 
-    running_count.fetch_add(1, Ordering::Relaxed);
+        // Transition to Running
+        let (args, duration_ms) = {
+            let mut jobs_guard = jobs.lock().await;
+            let job = match jobs_guard.get_mut(&job_id) {
+                Some(j) => j,
+                None => return,
+            };
+            job.state = JobState::Running;
+            job.started_at = Some(chrono::Utc::now());
+            (job.command_args.clone(), job.duration_ms)
+        };
 
-    // Set up cancellation and child handle
-    let cancel_flag = Arc::new(AtomicBool::new(false));
-    let child_handle: Arc<Mutex<Option<CommandChild>>> = Arc::new(Mutex::new(None));
+        running_count.fetch_add(1, Ordering::Relaxed);
 
-    {
-        let mut flags = cancel_flags.lock().await;
-        flags.insert(job_id.clone(), cancel_flag.clone());
-    }
-    {
-        let mut handles = child_handles.lock().await;
-        handles.insert(job_id.clone(), child_handle.clone());
-    }
+        // Set up cancellation and child handle
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+        let child_handle: Arc<Mutex<Option<CommandChild>>> = Arc::new(Mutex::new(None));
 
-    // Clone Arcs for the spawned task
-    let task_jobs = jobs.clone();
-    let task_running = running_count.clone();
-    let task_cancel_flags = cancel_flags.clone();
-    let task_child_handles = child_handles.clone();
-    let job_id_clone = job_id.clone();
-
-    // Clone Arcs again for the recursive try_run_next call
-    let next_jobs = jobs;
-    let next_running = running_count;
-    let next_cancel = cancel_flags;
-    let next_children = child_handles;
-
-    tauri::async_runtime::spawn(async move {
-        let (progress_tx, mut progress_rx) =
-            tokio::sync::mpsc::channel::<FfmpegProgress>(32);
-
-        // Spawn progress forwarder to Socket.IO
-        let fwd_job_id = job_id_clone.clone();
-        let fwd_jobs = task_jobs.clone();
-        let fwd_port = socket_io_port;
-        let progress_forwarder = tauri::async_runtime::spawn(async move {
-            while let Some(progress) = progress_rx.recv().await {
-                // Update stored progress
-                {
-                    let mut jobs_guard = fwd_jobs.lock().await;
-                    if let Some(job) = jobs_guard.get_mut(&fwd_job_id) {
-                        job.progress = Some(progress.clone());
-                    }
-                }
-
-                // Emit to Socket.IO
-                let data = serde_json::to_value(&progress).unwrap_or_default();
-                emit_socket_io_event(fwd_port, "/control", "ffmpeg:progress", &data).await;
-            }
-        });
-
-        // Execute FFmpeg
-        let result = executor::execute_ffmpeg(
-            &app_handle,
-            job_id_clone.clone(),
-            args,
-            duration_ms,
-            progress_tx,
-            cancel_flag,
-            child_handle,
-        )
-        .await;
-
-        // Wait for progress forwarder to drain
-        let _ = progress_forwarder.await;
-
-        // Update job state
         {
-            let mut jobs_guard = task_jobs.lock().await;
-            if let Some(job) = jobs_guard.get_mut(&job_id_clone) {
-                match &result {
-                    Ok(()) => {
-                        job.state = JobState::Completed;
-                        job.completed_at = Some(chrono::Utc::now());
-                        info!("FFmpeg job {} completed", job_id_clone);
+            let mut flags = cancel_flags.lock().await;
+            flags.insert(job_id.clone(), cancel_flag.clone());
+        }
+        {
+            let mut handles = child_handles.lock().await;
+            handles.insert(job_id.clone(), child_handle.clone());
+        }
 
-                        let data = serde_json::json!({
-                            "jobId": job_id_clone,
-                            "outputPath": job.output_path,
-                        });
-                        emit_socket_io_event(
-                            socket_io_port,
-                            "/control",
-                            "ffmpeg:complete",
-                            &data,
-                        )
-                        .await;
+        // Clone Arcs for the spawned task
+        let task_jobs = jobs.clone();
+        let task_running = running_count.clone();
+        let task_cancel_flags = cancel_flags.clone();
+        let task_child_handles = child_handles.clone();
+        let job_id_clone = job_id.clone();
+
+        // Clone Arcs again for the recursive try_run_next call
+        let next_jobs = jobs;
+        let next_running = running_count;
+        let next_cancel = cancel_flags;
+        let next_children = child_handles;
+
+        tauri::async_runtime::spawn(async move {
+            let (progress_tx, mut progress_rx) = tokio::sync::mpsc::channel::<FfmpegProgress>(32);
+
+            // Spawn progress forwarder to Socket.IO
+            let fwd_job_id = job_id_clone.clone();
+            let fwd_jobs = task_jobs.clone();
+            let fwd_port = socket_io_port;
+            let progress_forwarder = tauri::async_runtime::spawn(async move {
+                while let Some(progress) = progress_rx.recv().await {
+                    // Update stored progress
+                    {
+                        let mut jobs_guard = fwd_jobs.lock().await;
+                        if let Some(job) = jobs_guard.get_mut(&fwd_job_id) {
+                            job.progress = Some(progress.clone());
+                        }
                     }
-                    Err(e) => {
-                        // Check if it was a cancellation
-                        if job.state != JobState::Cancelled {
-                            job.state = JobState::Failed;
-                            job.error = Some(e.to_string());
+
+                    // Emit to Socket.IO
+                    let data = serde_json::to_value(&progress).unwrap_or_default();
+                    emit_socket_io_event(fwd_port, "/control", "ffmpeg:progress", &data).await;
+                }
+            });
+
+            // Execute FFmpeg
+            let result = executor::execute_ffmpeg(
+                &app_handle,
+                job_id_clone.clone(),
+                args,
+                duration_ms,
+                progress_tx,
+                cancel_flag,
+                child_handle,
+            )
+            .await;
+
+            // Wait for progress forwarder to drain
+            let _ = progress_forwarder.await;
+
+            // Update job state
+            {
+                let mut jobs_guard = task_jobs.lock().await;
+                if let Some(job) = jobs_guard.get_mut(&job_id_clone) {
+                    match &result {
+                        Ok(()) => {
+                            job.state = JobState::Completed;
                             job.completed_at = Some(chrono::Utc::now());
-                            error!("FFmpeg job {} failed: {e}", job_id_clone);
+                            info!("FFmpeg job {} completed", job_id_clone);
 
                             let data = serde_json::json!({
                                 "jobId": job_id_clone,
-                                "error": e.to_string(),
+                                "outputPath": job.output_path,
                             });
                             emit_socket_io_event(
                                 socket_io_port,
                                 "/control",
-                                "ffmpeg:error",
+                                "ffmpeg:complete",
                                 &data,
                             )
                             .await;
                         }
+                        Err(e) => {
+                            // Check if it was a cancellation
+                            if job.state != JobState::Cancelled {
+                                job.state = JobState::Failed;
+                                job.error = Some(e.to_string());
+                                job.completed_at = Some(chrono::Utc::now());
+                                error!("FFmpeg job {} failed: {e}", job_id_clone);
+
+                                let data = serde_json::json!({
+                                    "jobId": job_id_clone,
+                                    "error": e.to_string(),
+                                });
+                                emit_socket_io_event(
+                                    socket_io_port,
+                                    "/control",
+                                    "ffmpeg:error",
+                                    &data,
+                                )
+                                .await;
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        // Clean up
-        {
-            let mut flags = task_cancel_flags.lock().await;
-            flags.remove(&job_id_clone);
-        }
-        {
-            let mut handles = task_child_handles.lock().await;
-            handles.remove(&job_id_clone);
-        }
-        task_running.fetch_sub(1, Ordering::Relaxed);
+            // Clean up
+            {
+                let mut flags = task_cancel_flags.lock().await;
+                flags.remove(&job_id_clone);
+            }
+            {
+                let mut handles = task_child_handles.lock().await;
+                handles.remove(&job_id_clone);
+            }
+            task_running.fetch_sub(1, Ordering::Relaxed);
 
-        // Try to run next queued job (spawn as independent task to avoid Send issues)
-        tauri::async_runtime::spawn(try_run_next(
-            app_handle,
-            next_jobs,
-            max_concurrent,
-            next_running,
-            next_cancel,
-            next_children,
-            socket_io_port,
-        ));
-    });
-  }) // close Box::pin(async move {
+            // Try to run next queued job (spawn as independent task to avoid Send issues)
+            tauri::async_runtime::spawn(try_run_next(
+                app_handle,
+                next_jobs,
+                max_concurrent,
+                next_running,
+                next_cancel,
+                next_children,
+                socket_io_port,
+            ));
+        });
+    }) // close Box::pin(async move {
 }

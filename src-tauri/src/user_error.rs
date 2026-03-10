@@ -9,6 +9,7 @@ use std::fmt;
 
 use log::error;
 
+use crate::assets::error::AssetError;
 use crate::cache::error::CacheError;
 use crate::credentials::error::CredentialError;
 use crate::db::error::DbError;
@@ -46,6 +47,42 @@ impl UserError {
     }
 }
 
+// ── AssetError ──────────────────────────────────────────────────────────
+
+impl From<AssetError> for UserError {
+    fn from(e: AssetError) -> Self {
+        let msg = match &e {
+            AssetError::SourceNotFound(_) => "The selected file could not be found.".to_string(),
+            AssetError::Io(_) => "A file system error occurred while managing assets.".to_string(),
+            AssetError::InvalidRoot(_) => "The media directory setting is invalid.".to_string(),
+            AssetError::InvalidFilename(_) => "The file has an invalid name.".to_string(),
+            AssetError::SettingsError(_) => "Could not read asset settings.".to_string(),
+            AssetError::FormatNotSupported(_) => {
+                "This file format is not supported.".to_string()
+            }
+            AssetError::FileTooLarge { .. } => {
+                "The file exceeds the maximum allowed size.".to_string()
+            }
+            AssetError::MetadataExtraction(_) => {
+                "Could not read file metadata. The file may be corrupted.".to_string()
+            }
+            AssetError::Database(_) => {
+                "A database error occurred while managing the asset.".to_string()
+            }
+            AssetError::NotFound(id) => format!("Asset not found: {id}"),
+            AssetError::AssetInUse { .. } => {
+                "This asset is in use by other items. Use force-delete to remove it anyway."
+                    .to_string()
+            }
+            AssetError::DeleteBlocked(_) => {
+                "This asset cannot be deleted because it is a project's source video. Delete the project first."
+                    .to_string()
+            }
+        };
+        UserError::new(msg, e)
+    }
+}
+
 // ── PlatformError ───────────────────────────────────────────────────────
 
 impl From<PlatformError> for UserError {
@@ -60,9 +97,7 @@ impl From<PlatformError> for UserError {
                 "Could not reach the platform. Check your internet connection.".to_string()
             }
             PlatformError::HttpStatus { status, .. } => match *status {
-                401 | 403 => {
-                    "Authentication expired. Please reconnect your account.".to_string()
-                }
+                401 | 403 => "Authentication expired. Please reconnect your account.".to_string(),
                 429 => "Too many requests. Please try again shortly.".to_string(),
                 s if (500..600).contains(&s) => {
                     "The platform is experiencing issues. Please try again later.".to_string()
@@ -102,9 +137,7 @@ impl From<FfmpegError> for UserError {
             FfmpegError::InvalidJobState { .. } => {
                 "This media job cannot be modified in its current state.".to_string()
             }
-            FfmpegError::InvalidCommand(_) => {
-                "Invalid media processing command.".to_string()
-            }
+            FfmpegError::InvalidCommand(_) => "Invalid media processing command.".to_string(),
         };
         UserError::new(msg, e)
     }
@@ -153,10 +186,14 @@ impl From<RetryError> for UserError {
     fn from(e: RetryError) -> Self {
         let msg = match &e {
             RetryError::Exhausted { platform, .. } => {
-                format!("Could not reach {platform} after multiple attempts. Please try again later.")
+                format!(
+                    "Could not reach {platform} after multiple attempts. Please try again later."
+                )
             }
             RetryError::Permanent { platform, .. } => {
-                format!("A permanent error occurred with {platform}. Please reconnect your account.")
+                format!(
+                    "A permanent error occurred with {platform}. Please reconnect your account."
+                )
             }
             RetryError::Queued { platform } => {
                 format!("{platform} is temporarily unavailable. Your action has been queued.")

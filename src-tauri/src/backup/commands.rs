@@ -7,10 +7,7 @@ use crate::db::Database;
 use crate::user_error::UserFacingError;
 
 fn backup_dir(app_handle: &AppHandle) -> Result<std::path::PathBuf, String> {
-    let dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_user_err()?;
+    let dir = app_handle.path().app_data_dir().map_user_err()?;
     Ok(dir.join("backups"))
 }
 

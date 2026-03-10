@@ -3,6 +3,7 @@ import { Routes, Route, NavLink } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
 import { getSocketIoInfo, connectToNamespace } from './lib/socket';
 import ConnectionsPage from './pages/ConnectionsPage';
+import AssetsPage from './pages/AssetsPage';
 import './App.css';
 
 interface PongResponse {
@@ -66,6 +67,7 @@ function App() {
       <nav className="app-nav">
         <NavLink to="/">Home</NavLink>
         <NavLink to="/connections">Connections</NavLink>
+        <NavLink to="/assets">Assets</NavLink>
         <div className="nav-spacer" />
         <div className="status-pill">
           <span className="status-dot" style={{ backgroundColor: statusColor }} />
@@ -77,6 +79,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/connections" element={<ConnectionsPage />} />
+          <Route path="/assets" element={<AssetsPage />} />
         </Routes>
       </main>
 

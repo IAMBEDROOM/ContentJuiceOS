@@ -47,11 +47,7 @@ impl FfmpegCommandBuilder {
     }
 
     /// Add an input file with pre-input options (e.g., `-ss 10`).
-    pub fn input_with_opts(
-        mut self,
-        path: impl Into<String>,
-        opts: Vec<String>,
-    ) -> Self {
+    pub fn input_with_opts(mut self, path: impl Into<String>, opts: Vec<String>) -> Self {
         self.inputs.push(InputSpec {
             path: path.into(),
             pre_input_opts: opts,
@@ -69,11 +65,7 @@ impl FfmpegCommandBuilder {
     }
 
     /// Add an output file with output-specific options (e.g., `-b:a 192k`).
-    pub fn output_with_opts(
-        mut self,
-        path: impl Into<String>,
-        opts: Vec<String>,
-    ) -> Self {
+    pub fn output_with_opts(mut self, path: impl Into<String>, opts: Vec<String>) -> Self {
         self.outputs.push(OutputSpec {
             path: path.into(),
             output_opts: opts,
@@ -215,9 +207,14 @@ mod tests {
         assert_eq!(
             args,
             vec![
-                "-progress", "pipe:1", "-nostats", "-y",
-                "-i", "input.wav",
-                "-c:a", "libmp3lame",
+                "-progress",
+                "pipe:1",
+                "-nostats",
+                "-y",
+                "-i",
+                "input.wav",
+                "-c:a",
+                "libmp3lame",
                 "output.mp3",
             ]
         );

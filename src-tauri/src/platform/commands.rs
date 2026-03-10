@@ -38,9 +38,7 @@ pub fn disconnect_platform(
     let kind = CredentialKind::PlatformToken {
         connection_id: id.clone(),
     };
-    cred_manager
-        .delete_credential(&kind)
-        .map_user_err()?;
+    cred_manager.delete_credential(&kind).map_user_err()?;
 
     // Update status in DB
     let conn = db.conn.lock().map_user_err()?;
