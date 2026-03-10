@@ -33,7 +33,7 @@
   border: none;
   border-radius: 6px;
   background: rgba(0, 0, 0, 0.65);
-  color: #FF007F;
+  color: #ff007f;
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.15s;

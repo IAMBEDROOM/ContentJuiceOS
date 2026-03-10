@@ -42,10 +42,12 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: #FF007F;
+  color: #ff007f;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.15s, background-color 0.15s;
+  transition:
+    opacity 0.15s,
+    background-color 0.15s;
 }
 
 .asset-row:hover .asset-row-delete-btn {

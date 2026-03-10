@@ -19,7 +19,14 @@ interface AssetCardProps {
   selectionMode?: boolean;
 }
 
-export default function AssetCard({ asset, assetRoot, onDelete, selected, onSelect, selectionMode }: AssetCardProps) {
+export default function AssetCard({
+  asset,
+  assetRoot,
+  onDelete,
+  selected,
+  onSelect,
+  selectionMode,
+}: AssetCardProps) {
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const absolutePath = assetRoot + '/' + asset.filePath;
@@ -53,7 +60,10 @@ export default function AssetCard({ asset, assetRoot, onDelete, selected, onSele
       {onDelete && (
         <button
           className="asset-card-delete-btn"
-          onClick={(e) => { e.stopPropagation(); onDelete(asset.id); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(asset.id);
+          }}
           title="Delete asset"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -63,10 +73,19 @@ export default function AssetCard({ asset, assetRoot, onDelete, selected, onSele
       )}
       <div className="asset-card-preview">
         {asset.assetType === 'image' && (
-          <img src={fileUrl} alt={asset.originalFilename} className="asset-card-img" loading="lazy" />
+          <img
+            src={fileUrl}
+            alt={asset.originalFilename}
+            className="asset-card-img"
+            loading="lazy"
+          />
         )}
         {asset.assetType === 'audio' && (
-          <button className="asset-card-icon-btn" onClick={toggleAudio} title={playing ? 'Stop' : 'Play'}>
+          <button
+            className="asset-card-icon-btn"
+            onClick={toggleAudio}
+            title={playing ? 'Stop' : 'Play'}
+          >
             <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
               {playing ? (
                 <>
@@ -96,15 +115,30 @@ export default function AssetCard({ asset, assetRoot, onDelete, selected, onSele
           <div className="asset-card-icon" title="Animation">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
               <circle cx="12" cy="12" r="3" />
-              <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16z" opacity="0.3" />
-              <path d="M12 6a6 6 0 100 12 6 6 0 000-12zm0 10a4 4 0 110-8 4 4 0 010 8z" opacity="0.5" />
+              <path
+                d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16z"
+                opacity="0.3"
+              />
+              <path
+                d="M12 6a6 6 0 100 12 6 6 0 000-12zm0 10a4 4 0 110-8 4 4 0 010 8z"
+                opacity="0.5"
+              />
             </svg>
           </div>
         )}
         {asset.assetType === 'caption' && (
           <div className="asset-card-icon" title="Caption">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
-              <rect x="2" y="4" width="20" height="16" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
+              <rect
+                x="2"
+                y="4"
+                width="20"
+                height="16"
+                rx="2"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
               <rect x="5" y="14" width="14" height="3" rx="1" opacity="0.6" />
             </svg>
           </div>

@@ -31,7 +31,14 @@ interface AssetRowProps {
   selectionMode?: boolean;
 }
 
-export default function AssetRow({ asset, assetRoot, onDelete, selected, onSelect, selectionMode }: AssetRowProps) {
+export default function AssetRow({
+  asset,
+  assetRoot,
+  onDelete,
+  selected,
+  onSelect,
+  selectionMode,
+}: AssetRowProps) {
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const absolutePath = assetRoot + '/' + asset.filePath;
@@ -50,7 +57,10 @@ export default function AssetRow({ asset, assetRoot, onDelete, selected, onSelec
   };
 
   return (
-    <div className={`asset-row${selected ? ' selected' : ''}`} onClick={asset.assetType === 'audio' ? toggleAudio : undefined}>
+    <div
+      className={`asset-row${selected ? ' selected' : ''}`}
+      onClick={asset.assetType === 'audio' ? toggleAudio : undefined}
+    >
       {selectionMode && (
         <label className="asset-row-checkbox" onClick={(e) => e.stopPropagation()}>
           <input
@@ -82,7 +92,10 @@ export default function AssetRow({ asset, assetRoot, onDelete, selected, onSelec
       {onDelete && (
         <button
           className="asset-row-delete-btn"
-          onClick={(e) => { e.stopPropagation(); onDelete(asset.id); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(asset.id);
+          }}
           title="Delete asset"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">

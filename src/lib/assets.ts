@@ -2,7 +2,13 @@ import { invoke } from '@tauri-apps/api/core';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 
-import type { Asset, AssetListResponse, AssetReference, AssetType, DeleteAssetsResponse } from '../types/platform';
+import type {
+  Asset,
+  AssetListResponse,
+  AssetReference,
+  AssetType,
+  DeleteAssetsResponse,
+} from '../types/platform';
 
 // ---------------------------------------------------------------------------
 // Asset directory management
@@ -62,7 +68,10 @@ export async function deleteAsset(id: string, force = false): Promise<void> {
 }
 
 /** Deletes multiple assets. Returns count of deleted and any failures. */
-export async function deleteAssetsBatch(ids: string[], force = false): Promise<DeleteAssetsResponse> {
+export async function deleteAssetsBatch(
+  ids: string[],
+  force = false,
+): Promise<DeleteAssetsResponse> {
   return invoke<DeleteAssetsResponse>('delete_assets_batch', { ids, force });
 }
 
@@ -88,11 +97,29 @@ export async function openImportDialog(): Promise<string[] | null> {
       {
         name: 'Media Files',
         extensions: [
-          'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg',
-          'mp3', 'wav', 'ogg', 'flac', 'aac',
-          'mp4', 'webm', 'mov', 'mkv',
-          'ttf', 'otf', 'woff', 'woff2',
-          'json', 'srt', 'vtt', 'ass',
+          'png',
+          'jpg',
+          'jpeg',
+          'gif',
+          'webp',
+          'svg',
+          'mp3',
+          'wav',
+          'ogg',
+          'flac',
+          'aac',
+          'mp4',
+          'webm',
+          'mov',
+          'mkv',
+          'ttf',
+          'otf',
+          'woff',
+          'woff2',
+          'json',
+          'srt',
+          'vtt',
+          'ass',
         ],
       },
     ],

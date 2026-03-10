@@ -37,35 +37,42 @@ export default function AssetsPage() {
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   // Resolve asset root on mount
   useEffect(() => {
-    getAssetRoot().then(setAssetRoot).catch(() => {});
+    getAssetRoot()
+      .then(setAssetRoot)
+      .catch(() => {});
   }, []);
 
   // Fetch assets when filters change
-  const fetchAssets = useCallback(async (reset = true) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const offset = reset ? 0 : assets.length;
-      const result = await listAssets({
-        typeFilter: typeFilter ?? undefined,
-        search: search || undefined,
-        limit: PAGE_SIZE,
-        offset,
-      });
-      if (!mountedRef.current) return;
-      setAssets(reset ? result.assets : [...assets, ...result.assets]);
-      setTotal(result.total);
-    } catch (e) {
-      if (mountedRef.current) setError(String(e));
-    } finally {
-      if (mountedRef.current) setLoading(false);
-    }
-  }, [search, typeFilter, assets]);
+  const fetchAssets = useCallback(
+    async (reset = true) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const offset = reset ? 0 : assets.length;
+        const result = await listAssets({
+          typeFilter: typeFilter ?? undefined,
+          search: search || undefined,
+          limit: PAGE_SIZE,
+          offset,
+        });
+        if (!mountedRef.current) return;
+        setAssets(reset ? result.assets : [...assets, ...result.assets]);
+        setTotal(result.total);
+      } catch (e) {
+        if (mountedRef.current) setError(String(e));
+      } finally {
+        if (mountedRef.current) setLoading(false);
+      }
+    },
+    [search, typeFilter, assets],
+  );
 
   // Re-fetch when search or type filter changes
   useEffect(() => {
@@ -95,20 +102,23 @@ export default function AssetsPage() {
   }, [fetchAssets]);
 
   // Import from file paths (drag-and-drop)
-  const importPaths = useCallback(async (paths: string[]) => {
-    setImporting(true);
-    setError(null);
-    try {
-      for (const path of paths) {
-        await importAsset(path);
+  const importPaths = useCallback(
+    async (paths: string[]) => {
+      setImporting(true);
+      setError(null);
+      try {
+        for (const path of paths) {
+          await importAsset(path);
+        }
+        if (mountedRef.current) await fetchAssets(true);
+      } catch (e) {
+        if (mountedRef.current) setError(String(e));
+      } finally {
+        if (mountedRef.current) setImporting(false);
       }
-      if (mountedRef.current) await fetchAssets(true);
-    } catch (e) {
-      if (mountedRef.current) setError(String(e));
-    } finally {
-      if (mountedRef.current) setImporting(false);
-    }
-  }, [fetchAssets]);
+    },
+    [fetchAssets],
+  );
 
   // Selection handlers
   const handleSelect = useCallback((id: string) => {
@@ -129,38 +139,47 @@ export default function AssetsPage() {
   }, []);
 
   // Deletion handlers
-  const handleDeleteRequest = useCallback(async (ids: string[]) => {
-    setError(null);
-    try {
-      const targets = assets.filter((a) => ids.includes(a.id));
-      const refsMap = new Map<string, AssetReference[]>();
-      for (const id of ids) {
-        const refs = await checkAssetReferences(id);
-        if (refs.length > 0) refsMap.set(id, refs);
+  const handleDeleteRequest = useCallback(
+    async (ids: string[]) => {
+      setError(null);
+      try {
+        const targets = assets.filter((a) => ids.includes(a.id));
+        const refsMap = new Map<string, AssetReference[]>();
+        for (const id of ids) {
+          const refs = await checkAssetReferences(id);
+          if (refs.length > 0) refsMap.set(id, refs);
+        }
+        setDeleteTargets(targets);
+        setDeleteRefs(refsMap);
+        setShowDeleteDialog(true);
+      } catch (e) {
+        setError(String(e));
       }
-      setDeleteTargets(targets);
-      setDeleteRefs(refsMap);
-      setShowDeleteDialog(true);
-    } catch (e) {
-      setError(String(e));
-    }
-  }, [assets]);
+    },
+    [assets],
+  );
 
-  const handleDeleteConfirm = useCallback(async (force: boolean) => {
-    setShowDeleteDialog(false);
-    setError(null);
-    try {
-      if (deleteTargets.length === 1) {
-        await deleteAsset(deleteTargets[0].id, force);
-      } else {
-        await deleteAssetsBatch(deleteTargets.map((a) => a.id), force);
+  const handleDeleteConfirm = useCallback(
+    async (force: boolean) => {
+      setShowDeleteDialog(false);
+      setError(null);
+      try {
+        if (deleteTargets.length === 1) {
+          await deleteAsset(deleteTargets[0].id, force);
+        } else {
+          await deleteAssetsBatch(
+            deleteTargets.map((a) => a.id),
+            force,
+          );
+        }
+        setSelectedIds(new Set());
+        if (mountedRef.current) await fetchAssets(true);
+      } catch (e) {
+        if (mountedRef.current) setError(String(e));
       }
-      setSelectedIds(new Set());
-      if (mountedRef.current) await fetchAssets(true);
-    } catch (e) {
-      if (mountedRef.current) setError(String(e));
-    }
-  }, [deleteTargets, fetchAssets]);
+    },
+    [deleteTargets, fetchAssets],
+  );
 
   const handleDeleteCancel = useCallback(() => {
     setShowDeleteDialog(false);
@@ -194,9 +213,7 @@ export default function AssetsPage() {
   return (
     <div className="assets-page">
       <h2 className="assets-title">Asset Library</h2>
-      <p className="assets-subtitle">
-        Import and manage images, audio, video, fonts, and more.
-      </p>
+      <p className="assets-subtitle">Import and manage images, audio, video, fonts, and more.</p>
 
       <AssetToolbar
         search={search}
@@ -224,9 +241,7 @@ export default function AssetsPage() {
       {!loading && assets.length === 0 && (
         <div className="assets-empty">
           <p>No assets yet</p>
-          <p className="assets-empty-hint">
-            Click Import or drag files here to get started.
-          </p>
+          <p className="assets-empty-hint">Click Import or drag files here to get started.</p>
         </div>
       )}
 
@@ -271,11 +286,7 @@ export default function AssetsPage() {
       )}
 
       {hasMore && (
-        <button
-          className="btn btn-load-more"
-          onClick={() => fetchAssets(false)}
-          disabled={loading}
-        >
+        <button className="btn btn-load-more" onClick={() => fetchAssets(false)} disabled={loading}>
           {loading ? 'Loading...' : 'Load More'}
         </button>
       )}

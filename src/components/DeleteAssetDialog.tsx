@@ -22,9 +22,7 @@ export default function DeleteAssetDialog({
 
   for (const asset of assets) {
     const refs = references.get(asset.id) ?? [];
-    const hasSourceVideoRef = refs.some(
-      (r) => r.refType === 'project'
-    );
+    const hasSourceVideoRef = refs.some((r) => r.refType === 'project');
 
     // We need to distinguish project FK refs from config refs.
     // For simplicity, if it has a project ref, we treat it as potentially blocked.
@@ -51,7 +49,7 @@ export default function DeleteAssetDialog({
     (e: KeyboardEvent) => {
       if (e.key === 'Escape') onCancel();
     },
-    [onCancel]
+    [onCancel],
   );
 
   useEffect(() => {
@@ -66,9 +64,7 @@ export default function DeleteAssetDialog({
   return (
     <div className="delete-dialog-backdrop" onClick={handleBackdropClick}>
       <div className="delete-dialog">
-        <h3>
-          Delete {assets.length === 1 ? 'Asset' : `${assets.length} Assets`}?
-        </h3>
+        <h3>Delete {assets.length === 1 ? 'Asset' : `${assets.length} Assets`}?</h3>
 
         {!hasRefs && (
           <p>
@@ -101,12 +97,10 @@ export default function DeleteAssetDialog({
                     <span className="delete-ref-badge">{ref.refType.replace('_', ' ')}</span>
                     <span className="delete-ref-name">{ref.refName}</span>
                   </li>
-                ))
+                )),
               )}
             </ul>
-            <p style={{ marginTop: 8 }}>
-              Deleting will leave broken references in these items.
-            </p>
+            <p style={{ marginTop: 8 }}>Deleting will leave broken references in these items.</p>
           </div>
         )}
 
@@ -115,10 +109,7 @@ export default function DeleteAssetDialog({
             Cancel
           </button>
           {deletableCount > 0 && (
-            <button
-              className="btn-delete"
-              onClick={() => onConfirm(hasOnlySoftRefs)}
-            >
+            <button className="btn-delete" onClick={() => onConfirm(hasOnlySoftRefs)}>
               {hasOnlySoftRefs ? 'Delete Anyway' : 'Delete'}
             </button>
           )}

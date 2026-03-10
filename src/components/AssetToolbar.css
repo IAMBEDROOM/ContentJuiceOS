@@ -101,7 +101,9 @@
   color: var(--color-text-primary);
   cursor: pointer;
   opacity: 0.4;
-  transition: opacity 0.15s, background-color 0.15s;
+  transition:
+    opacity 0.15s,
+    background-color 0.15s;
 }
 
 .view-btn:hover {
@@ -148,7 +150,7 @@
   padding: 7px 16px;
   border: none;
   border-radius: 6px;
-  background-color: #FF007F;
+  background-color: #ff007f;
   color: #fff;
   font-weight: 600;
   font-size: 0.8125rem;
