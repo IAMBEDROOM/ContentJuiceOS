@@ -57,6 +57,18 @@ impl From<AssetError> for UserError {
             AssetError::InvalidRoot(_) => "The media directory setting is invalid.".to_string(),
             AssetError::InvalidFilename(_) => "The file has an invalid name.".to_string(),
             AssetError::SettingsError(_) => "Could not read asset settings.".to_string(),
+            AssetError::FormatNotSupported(_) => {
+                "This file format is not supported.".to_string()
+            }
+            AssetError::FileTooLarge { .. } => {
+                "The file exceeds the maximum allowed size.".to_string()
+            }
+            AssetError::MetadataExtraction(_) => {
+                "Could not read file metadata. The file may be corrupted.".to_string()
+            }
+            AssetError::Database(_) => {
+                "A database error occurred while importing the asset.".to_string()
+            }
         };
         UserError::new(msg, e)
     }

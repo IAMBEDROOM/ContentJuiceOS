@@ -14,6 +14,14 @@ pub enum AssetError {
     InvalidFilename(String),
     /// Could not read settings from the database
     SettingsError(String),
+    /// File extension is not in the allowed formats list
+    FormatNotSupported(String),
+    /// File exceeds the maximum allowed size for its asset type
+    FileTooLarge { limit_bytes: u64, actual_bytes: u64 },
+    /// Failed to extract metadata via ffprobe
+    MetadataExtraction(String),
+    /// Database operation failed during asset insert/query
+    Database(String),
 }
 
 impl fmt::Display for AssetError {
@@ -24,6 +32,16 @@ impl fmt::Display for AssetError {
             Self::InvalidRoot(msg) => write!(f, "Invalid asset root: {msg}"),
             Self::InvalidFilename(msg) => write!(f, "Invalid filename: {msg}"),
             Self::SettingsError(msg) => write!(f, "Settings error: {msg}"),
+            Self::FormatNotSupported(ext) => write!(f, "Format not supported: {ext}"),
+            Self::FileTooLarge {
+                limit_bytes,
+                actual_bytes,
+            } => write!(
+                f,
+                "File too large: {actual_bytes} bytes exceeds limit of {limit_bytes} bytes"
+            ),
+            Self::MetadataExtraction(msg) => write!(f, "Metadata extraction failed: {msg}"),
+            Self::Database(msg) => write!(f, "Asset database error: {msg}"),
         }
     }
 }

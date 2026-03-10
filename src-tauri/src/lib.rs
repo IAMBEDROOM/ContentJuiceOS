@@ -133,6 +133,7 @@ pub fn run() {
             ffmpeg::commands::ffprobe_media_info,
             assets::commands::get_asset_root,
             assets::commands::ensure_asset_directories,
+            assets::commands::import_asset,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

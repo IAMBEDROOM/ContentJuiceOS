@@ -70,6 +70,24 @@ pub struct ImportedFile {
     pub format: String,
 }
 
+/// A fully-resolved asset record, matching the `assets` DB table.
+/// Returned to the frontend after a successful import.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Asset {
+    pub id: String,
+    pub original_filename: String,
+    pub asset_type: AssetType,
+    pub format: String,
+    pub file_size: i64,
+    pub width: Option<i32>,
+    pub height: Option<i32>,
+    pub duration: Option<f64>,
+    pub tags: Vec<String>,
+    pub file_path: String,
+    pub created_at: String,
+}
+
 /// All subdirectories to create under the asset root.
 /// Includes `voice_profiles` which has its own DB table, not part of `AssetType`.
 pub const ALL_SUBDIRECTORIES: &[&str] = &[
