@@ -42,7 +42,7 @@ export default function AssetToolbar({
   onClearSelection,
 }: AssetToolbarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Debounced search input
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
