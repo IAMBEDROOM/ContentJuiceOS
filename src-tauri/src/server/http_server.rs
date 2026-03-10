@@ -8,10 +8,10 @@ use axum::extract::{Query, State};
 use axum::response::Html;
 use axum::routing::get;
 use axum::{Json, Router};
+use http::{header, HeaderValue, Method};
 use log::{error, info};
 use serde::Serialize;
 use tauri::Manager;
-use http::{header, HeaderValue, Method};
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
@@ -233,10 +233,7 @@ async fn security_headers_middleware(
     request: axum::extract::Request,
     next: axum::middleware::Next,
 ) -> axum::response::Response {
-    let is_sensitive = request
-        .uri()
-        .path()
-        .starts_with("/health")
+    let is_sensitive = request.uri().path().starts_with("/health")
         || request.uri().path().starts_with("/config")
         || request.uri().path().starts_with("/auth/");
 
@@ -258,8 +255,8 @@ fn build_cors_layer(port: u16) -> CorsLayer {
     let origins: Vec<HeaderValue> = [
         format!("http://127.0.0.1:{port}"),
         format!("http://localhost:{port}"),
-        "http://localhost:1420".to_string(),  // Tauri dev server
-        "tauri://localhost".to_string(),      // Tauri production (macOS/Linux)
+        "http://localhost:1420".to_string(),   // Tauri dev server
+        "tauri://localhost".to_string(),       // Tauri production (macOS/Linux)
         "https://tauri.localhost".to_string(), // Tauri production (Windows)
     ]
     .into_iter()

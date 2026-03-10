@@ -103,10 +103,7 @@ pub async fn execute_ffmpeg(
                 }
             }
             Some(CommandEvent::Terminated(status)) => {
-                info!(
-                    "FFmpeg job {job_id} terminated with code {:?}",
-                    status.code
-                );
+                info!("FFmpeg job {job_id} terminated with code {:?}", status.code);
                 // Clear child handle
                 let mut handle = child_handle.lock().await;
                 *handle = None;
@@ -152,10 +149,7 @@ fn parse_progress_field(
         }
         "bitrate" => {
             // Format: "1234.5kbits/s" or "N/A"
-            progress.bitrate_kbps = value
-                .trim_end_matches("kbits/s")
-                .parse()
-                .unwrap_or(0.0);
+            progress.bitrate_kbps = value.trim_end_matches("kbits/s").parse().unwrap_or(0.0);
         }
         "out_time_ms" => {
             // FFmpeg reports this in microseconds despite the name

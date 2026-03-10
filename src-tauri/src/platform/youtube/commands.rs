@@ -198,14 +198,11 @@ pub async fn revoke_youtube_auth(
     let kind = CredentialKind::PlatformToken {
         connection_id: connection_id.clone(),
     };
-    cred_manager
-        .delete_credential(&kind)
-        .map_user_err()?;
+    cred_manager.delete_credential(&kind).map_user_err()?;
 
     // Update status in DB
     let conn = db.conn.lock().map_user_err()?;
-    repository::update_connection_status(&conn, &connection_id, "revoked")
-        .map_user_err()?;
+    repository::update_connection_status(&conn, &connection_id, "revoked").map_user_err()?;
 
     info!("Revoked YouTube auth for connection {connection_id}");
     Ok(())

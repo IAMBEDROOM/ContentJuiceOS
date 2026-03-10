@@ -11,9 +11,7 @@ pub fn store_credential(
     value: String,
     cred_manager: State<'_, CredentialManager>,
 ) -> Result<(), String> {
-    cred_manager
-        .store_credential(&kind, &value)
-        .map_user_err()
+    cred_manager.store_credential(&kind, &value).map_user_err()
 }
 
 #[tauri::command]
@@ -21,9 +19,7 @@ pub fn get_credential(
     kind: CredentialKind,
     cred_manager: State<'_, CredentialManager>,
 ) -> Result<Option<String>, String> {
-    cred_manager
-        .get_credential(&kind)
-        .map_user_err()
+    cred_manager.get_credential(&kind).map_user_err()
 }
 
 #[tauri::command]
@@ -31,9 +27,7 @@ pub fn delete_credential(
     kind: CredentialKind,
     cred_manager: State<'_, CredentialManager>,
 ) -> Result<(), String> {
-    cred_manager
-        .delete_credential(&kind)
-        .map_user_err()
+    cred_manager.delete_credential(&kind).map_user_err()
 }
 
 #[tauri::command]
@@ -41,9 +35,7 @@ pub fn has_credential(
     kind: CredentialKind,
     cred_manager: State<'_, CredentialManager>,
 ) -> Result<bool, String> {
-    cred_manager
-        .has_credential(&kind)
-        .map_user_err()
+    cred_manager.has_credential(&kind).map_user_err()
 }
 
 #[tauri::command]

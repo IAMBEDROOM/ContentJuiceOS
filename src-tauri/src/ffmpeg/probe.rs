@@ -6,14 +6,19 @@ use crate::ffmpeg::error::FfmpegError;
 use crate::ffmpeg::types::{MediaInfo, StreamInfo};
 
 /// Run ffprobe on a file and return parsed media information.
-pub async fn probe_media(app_handle: &AppHandle, file_path: &str) -> Result<MediaInfo, FfmpegError> {
+pub async fn probe_media(
+    app_handle: &AppHandle,
+    file_path: &str,
+) -> Result<MediaInfo, FfmpegError> {
     let sidecar = app_handle
         .shell()
         .sidecar("binaries/ffprobe")
         .map_err(|e| FfmpegError::SpawnFailed(format!("Failed to create ffprobe sidecar: {e}")))?
         .args([
-            "-v", "quiet",
-            "-print_format", "json",
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
             "-show_format",
             "-show_streams",
             file_path,
@@ -42,9 +47,9 @@ pub async fn probe_media(app_handle: &AppHandle, file_path: &str) -> Result<Medi
 }
 
 fn parse_probe_output(json: &serde_json::Value) -> Result<MediaInfo, FfmpegError> {
-    let format = json.get("format").ok_or_else(|| {
-        FfmpegError::ProbeFailed("Missing 'format' in ffprobe output".into())
-    })?;
+    let format = json
+        .get("format")
+        .ok_or_else(|| FfmpegError::ProbeFailed("Missing 'format' in ffprobe output".into()))?;
 
     let format_name = format
         .get("format_name")
@@ -91,13 +96,16 @@ fn parse_stream(stream: &serde_json::Value) -> Option<StreamInfo> {
         .unwrap_or("unknown")
         .to_string();
 
-    let index = stream
-        .get("index")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(0) as u32;
+    let index = stream.get("index").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
 
-    let width = stream.get("width").and_then(|v| v.as_u64()).map(|v| v as u32);
-    let height = stream.get("height").and_then(|v| v.as_u64()).map(|v| v as u32);
+    let width = stream
+        .get("width")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as u32);
+    let height = stream
+        .get("height")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as u32);
 
     let frame_rate = stream
         .get("r_frame_rate")

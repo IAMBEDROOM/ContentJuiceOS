@@ -1,3 +1,4 @@
+mod assets;
 mod audit;
 mod backup;
 mod cache;
@@ -34,6 +35,10 @@ pub fn run() {
                 ));
 
             audit::prune_old_entries(&database);
+
+            let asset_root = assets::resolve_asset_root(&database, &app_data_dir)
+                .expect("Failed to resolve asset directory");
+            assets::ensure_directories(&asset_root).expect("Failed to create asset directories");
 
             let cred_manager = credentials::CredentialManager::initialize(Arc::clone(&database));
             app.manage(cred_manager);
@@ -77,8 +82,7 @@ pub fn run() {
             let socket_io_server = server::SocketIoServer::start(app.handle())
                 .expect("Failed to start Socket.IO sidecar");
 
-            let ffmpeg_queue =
-                Arc::new(ffmpeg::FfmpegQueue::new(1, socket_io_server.port()));
+            let ffmpeg_queue = Arc::new(ffmpeg::FfmpegQueue::new(1, socket_io_server.port()));
             app.manage(ffmpeg_queue);
 
             app.manage(socket_io_server);
@@ -127,6 +131,8 @@ pub fn run() {
             ffmpeg::commands::ffmpeg_list_jobs,
             ffmpeg::commands::ffmpeg_cancel_job,
             ffmpeg::commands::ffprobe_media_info,
+            assets::commands::get_asset_root,
+            assets::commands::ensure_asset_directories,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

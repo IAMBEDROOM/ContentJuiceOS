@@ -1,5 +1,5 @@
-pub mod commands;
 pub mod command;
+pub mod commands;
 pub mod error;
 mod executor;
 mod probe;
