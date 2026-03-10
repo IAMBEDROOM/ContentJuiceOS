@@ -1,0 +1,137 @@
+/* ── Asset Toolbar ─────────────────────────────────────────────────── */
+
+.asset-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.asset-toolbar-left {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.asset-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ── Search ────────────────────────────────────────────────────────── */
+
+.asset-search {
+  width: 100%;
+  max-width: 360px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.asset-search::placeholder {
+  color: rgba(230, 237, 243, 0.35);
+}
+
+.asset-search:focus {
+  border-color: var(--color-accent-primary);
+}
+
+/* ── Type Chips ────────────────────────────────────────────────────── */
+
+.asset-type-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.asset-chip {
+  padding: 4px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  opacity: 0.6;
+  transition:
+    opacity 0.15s,
+    background-color 0.15s,
+    border-color 0.15s;
+}
+
+.asset-chip:hover {
+  opacity: 0.85;
+}
+
+.asset-chip.active {
+  opacity: 1;
+  background-color: var(--color-accent-primary);
+  color: var(--color-bg-primary);
+  border-color: var(--color-accent-primary);
+}
+
+/* ── View Toggle ───────────────────────────────────────────────────── */
+
+.asset-view-toggle {
+  display: flex;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.view-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity 0.15s, background-color 0.15s;
+}
+
+.view-btn:hover {
+  opacity: 0.7;
+}
+
+.view-btn.active {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Import Button ─────────────────────────────────────────────────── */
+
+.btn-import {
+  padding: 7px 20px;
+  border: none;
+  border-radius: 6px;
+  background-color: var(--color-accent-primary);
+  color: var(--color-bg-primary);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn-import:hover {
+  opacity: 0.85;
+}
+
+.btn-import:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

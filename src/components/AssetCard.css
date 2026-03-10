@@ -1,0 +1,101 @@
+/* ── Asset Card (Grid View) ────────────────────────────────────────── */
+
+.asset-card {
+  background-color: var(--color-bg-surface);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.15s;
+}
+
+.asset-card:hover {
+  box-shadow: 0 0 0 1px rgba(0, 229, 255, 0.25);
+}
+
+/* ── Preview Area ──────────────────────────────────────────────────── */
+
+.asset-card-preview {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.asset-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.asset-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-primary);
+  opacity: 0.35;
+}
+
+.asset-card-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--color-accent-primary);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.asset-card-icon-btn:hover {
+  opacity: 1;
+}
+
+.asset-card-icon-letter {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+/* ── Info ───────────────────────────────────────────────────────────── */
+
+.asset-card-info {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.asset-card-filename {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.asset-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.asset-card-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background-color: rgba(0, 229, 255, 0.12);
+  color: var(--color-accent-primary);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.asset-card-size {
+  font-size: 0.75rem;
+  opacity: 0.5;
+}

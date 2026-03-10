@@ -23,6 +23,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let app_data_dir = app
                 .path()
@@ -134,6 +135,8 @@ pub fn run() {
             assets::commands::get_asset_root,
             assets::commands::ensure_asset_directories,
             assets::commands::import_asset,
+            assets::commands::list_assets,
+            assets::commands::get_asset_file_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

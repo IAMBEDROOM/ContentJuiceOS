@@ -88,6 +88,14 @@ pub struct Asset {
     pub created_at: String,
 }
 
+/// Response payload for the `list_assets` Tauri command.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetListResponse {
+    pub assets: Vec<Asset>,
+    pub total: i64,
+}
+
 /// All subdirectories to create under the asset root.
 /// Includes `voice_profiles` which has its own DB table, not part of `AssetType`.
 pub const ALL_SUBDIRECTORIES: &[&str] = &[
