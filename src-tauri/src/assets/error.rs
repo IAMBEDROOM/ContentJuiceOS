@@ -54,7 +54,10 @@ impl fmt::Display for AssetError {
             Self::MetadataExtraction(msg) => write!(f, "Metadata extraction failed: {msg}"),
             Self::Database(msg) => write!(f, "Asset database error: {msg}"),
             Self::NotFound(id) => write!(f, "Asset not found: {id}"),
-            Self::AssetInUse { asset_id, references } => {
+            Self::AssetInUse {
+                asset_id,
+                references,
+            } => {
                 write!(
                     f,
                     "Asset {asset_id} is in use by {} reference(s)",

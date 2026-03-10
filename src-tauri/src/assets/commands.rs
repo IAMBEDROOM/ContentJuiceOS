@@ -69,17 +69,12 @@ pub fn list_assets(
         .lock()
         .map_err(|e| format!("Failed to lock database: {e}"))?;
 
-    let assets = repository::list_assets(
-        &conn,
-        asset_type.as_ref(),
-        search.as_deref(),
-        limit,
-        offset,
-    )
-    .map_user_err()?;
+    let assets =
+        repository::list_assets(&conn, asset_type.as_ref(), search.as_deref(), limit, offset)
+            .map_user_err()?;
 
-    let total = repository::count_assets(&conn, asset_type.as_ref(), search.as_deref())
-        .map_user_err()?;
+    let total =
+        repository::count_assets(&conn, asset_type.as_ref(), search.as_deref()).map_user_err()?;
 
     Ok(AssetListResponse { assets, total })
 }

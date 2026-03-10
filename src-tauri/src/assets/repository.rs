@@ -262,7 +262,9 @@ pub fn find_asset_references(
     // 4. Voice profiles referencing in sample_asset_ids JSON
     {
         let mut stmt = conn
-            .prepare("SELECT id, name FROM voice_profiles WHERE sample_asset_ids LIKE '%' || ?1 || '%'")
+            .prepare(
+                "SELECT id, name FROM voice_profiles WHERE sample_asset_ids LIKE '%' || ?1 || '%'",
+            )
             .map_err(|e| AssetError::Database(e.to_string()))?;
         let rows = stmt
             .query_map(rusqlite::params![asset_id], |row| {
@@ -287,7 +289,10 @@ pub fn find_asset_references(
 /// Returns `NotFound` if no row matched. Catches SQLite FK constraint violations
 /// and returns `DeleteBlocked`.
 pub fn delete_asset(conn: &Connection, asset_id: &str) -> Result<(), AssetError> {
-    match conn.execute("DELETE FROM assets WHERE id = ?1", rusqlite::params![asset_id]) {
+    match conn.execute(
+        "DELETE FROM assets WHERE id = ?1",
+        rusqlite::params![asset_id],
+    ) {
         Ok(changes) => {
             if changes == 0 {
                 Err(AssetError::NotFound(asset_id.to_string()))
@@ -508,7 +513,10 @@ mod tests {
         insert_asset(&conn, &sample_audio_asset()).unwrap();
 
         assert_eq!(count_assets(&conn, None, None).unwrap(), 2);
-        assert_eq!(count_assets(&conn, Some(&AssetType::Image), None).unwrap(), 1);
+        assert_eq!(
+            count_assets(&conn, Some(&AssetType::Image), None).unwrap(),
+            1
+        );
         assert_eq!(count_assets(&conn, None, Some("song")).unwrap(), 1);
     }
 
@@ -543,7 +551,8 @@ mod tests {
                 "My Alert",
                 format!(r#"{{"elements":[{{"assetId":"{}"}}]}}"#, asset.id)
             ],
-        ).unwrap();
+        )
+        .unwrap();
 
         let refs = find_asset_references(&conn, &asset.id).unwrap();
         assert_eq!(refs.len(), 1);
@@ -576,7 +585,9 @@ mod tests {
         ).unwrap();
 
         let refs = find_asset_references(&conn, &asset.id).unwrap();
-        assert!(refs.iter().any(|r| r.ref_type == "project" && r.ref_name == "My Project"));
+        assert!(refs
+            .iter()
+            .any(|r| r.ref_type == "project" && r.ref_name == "My Project"));
     }
 
     #[test]
@@ -611,7 +622,9 @@ mod tests {
         ).unwrap();
 
         let refs = find_asset_references(&conn, &audio_asset.id).unwrap();
-        assert!(refs.iter().any(|r| r.ref_type == "project" && r.ref_name == "Audio Project"));
+        assert!(refs
+            .iter()
+            .any(|r| r.ref_type == "project" && r.ref_name == "Audio Project"));
     }
 
     #[test]

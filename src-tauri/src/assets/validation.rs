@@ -45,12 +45,12 @@ pub fn validate_format(asset_type: AssetType, extension: &str) -> Result<(), Ass
 /// Returns the maximum allowed file size in bytes for the given asset type.
 pub fn max_size_bytes(asset_type: AssetType) -> u64 {
     match asset_type {
-        AssetType::Image => 20 * 1024 * 1024,          // 20 MB
-        AssetType::Audio => 50 * 1024 * 1024,           // 50 MB
-        AssetType::Video => 4 * 1024 * 1024 * 1024,     // 4 GB
-        AssetType::Font => 20 * 1024 * 1024,            // 20 MB
-        AssetType::Animation => 50 * 1024 * 1024,       // 50 MB
-        AssetType::Caption => 10 * 1024 * 1024,         // 10 MB
+        AssetType::Image => 20 * 1024 * 1024,       // 20 MB
+        AssetType::Audio => 50 * 1024 * 1024,       // 50 MB
+        AssetType::Video => 4 * 1024 * 1024 * 1024, // 4 GB
+        AssetType::Font => 20 * 1024 * 1024,        // 20 MB
+        AssetType::Animation => 50 * 1024 * 1024,   // 50 MB
+        AssetType::Caption => 10 * 1024 * 1024,     // 10 MB
     }
 }
 

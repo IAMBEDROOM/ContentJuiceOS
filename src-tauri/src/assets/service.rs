@@ -60,7 +60,8 @@ pub async fn import_asset_from_path(
     let imported = storage::import_file(&asset_root, source_path, asset_type)?;
 
     // 7. Extract metadata via ffprobe for applicable types
-    let (width, height, duration) = extract_metadata(app_handle, asset_type, &imported.absolute_path).await;
+    let (width, height, duration) =
+        extract_metadata(app_handle, asset_type, &imported.absolute_path).await;
 
     // 8. Build Asset struct
     let asset = Asset {
