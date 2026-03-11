@@ -13,6 +13,7 @@ use crate::assets::error::AssetError;
 use crate::cache::error::CacheError;
 use crate::credentials::error::CredentialError;
 use crate::db::error::DbError;
+use crate::designs::error::DesignError;
 use crate::ffmpeg::error::FfmpegError;
 use crate::platform::error::PlatformError;
 use crate::retry::error::RetryError;
@@ -78,6 +79,22 @@ impl From<AssetError> for UserError {
                 "This asset cannot be deleted because it is a project's source video. Delete the project first."
                     .to_string()
             }
+        };
+        UserError::new(msg, e)
+    }
+}
+
+// ── DesignError ─────────────────────────────────────────────────────────
+
+impl From<DesignError> for UserError {
+    fn from(e: DesignError) -> Self {
+        let msg = match &e {
+            DesignError::Database(_) => {
+                "A database error occurred while managing the design.".to_string()
+            }
+            DesignError::NotFound(id) => format!("Design not found: {id}"),
+            DesignError::Serialization(_) => "Failed to process design data.".to_string(),
+            DesignError::Validation(msg) => msg.clone(),
         };
         UserError::new(msg, e)
     }

@@ -12,6 +12,18 @@ pub enum DesignType {
     Panel,
 }
 
+impl DesignType {
+    pub fn as_db_str(&self) -> &'static str {
+        match self {
+            Self::Alert => "alert",
+            Self::Overlay => "overlay",
+            Self::Scene => "scene",
+            Self::Stinger => "stinger",
+            Self::Panel => "panel",
+        }
+    }
+}
+
 // ── Geometry ─────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -359,6 +371,17 @@ fn default_background_color() -> String {
     "#0A0D14".to_string()
 }
 
+impl Default for DesignTree {
+    fn default() -> Self {
+        Self {
+            schema_version: 1,
+            canvas: CanvasSize::default(),
+            background_color: "#0A0D14".to_string(),
+            elements: vec![],
+        }
+    }
+}
+
 // ── Design Record ────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -376,6 +399,15 @@ pub struct Design {
     pub description: String,
     pub created_at: String,
     pub updated_at: String,
+}
+
+// ── List Response DTO ────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DesignListResponse {
+    pub designs: Vec<Design>,
+    pub total: i64,
 }
 
 // ── Tests ────────────────────────────────────────────────────────────

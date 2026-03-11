@@ -208,3 +208,11 @@ export const DesignSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 export type Design = z.infer<typeof DesignSchema>;
+
+// ── List Response ────────────────────────────────────────────────────
+
+export const DesignListResponseSchema = z.object({
+  designs: z.array(DesignSchema),
+  total: z.number(),
+});
+export type DesignListResponse = z.infer<typeof DesignListResponseSchema>;

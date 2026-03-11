@@ -141,6 +141,12 @@ pub fn run() {
             assets::commands::check_asset_references,
             assets::commands::delete_asset,
             assets::commands::delete_assets_batch,
+            designs::commands::create_design,
+            designs::commands::get_design,
+            designs::commands::list_designs,
+            designs::commands::update_design,
+            designs::commands::delete_design,
+            designs::commands::duplicate_design,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

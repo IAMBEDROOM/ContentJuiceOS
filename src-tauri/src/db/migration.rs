@@ -488,10 +488,26 @@ mod tests {
         .unwrap();
         // Run V1 core schema to create the designs table
         conn.execute_batch(super::MIGRATION_V1_CORE_SCHEMA).unwrap();
-        conn.execute("INSERT INTO _migrations (version, name) VALUES (1, 'core_schema')", []).unwrap();
-        conn.execute("INSERT INTO _migrations (version, name) VALUES (2, 'secure_credentials')", []).unwrap();
-        conn.execute("INSERT INTO _migrations (version, name) VALUES (3, 'platform_unique_index')", []).unwrap();
-        conn.execute("INSERT INTO _migrations (version, name) VALUES (4, 'audit_log')", []).unwrap();
+        conn.execute(
+            "INSERT INTO _migrations (version, name) VALUES (1, 'core_schema')",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO _migrations (version, name) VALUES (2, 'secure_credentials')",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO _migrations (version, name) VALUES (3, 'platform_unique_index')",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO _migrations (version, name) VALUES (4, 'audit_log')",
+            [],
+        )
+        .unwrap();
 
         // Insert a design before V5 migration
         conn.execute(
