@@ -1,0 +1,52 @@
+/* ── Design Editor Page ───────────────────────────────────────────── */
+
+.design-editor-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.design-editor-header {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.design-editor-canvas-area {
+  flex: 1;
+  min-height: 0;
+}
+
+.design-editor-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  margin: 0 4px 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.design-editor-back:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.design-editor-loading,
+.design-editor-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  font-size: 0.875rem;
+  color: rgba(230, 237, 243, 0.5);
+}
+
+.design-editor-error {
+  color: var(--color-accent-secondary);
+}

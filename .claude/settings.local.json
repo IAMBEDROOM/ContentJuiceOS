@@ -3,7 +3,8 @@
     "allow": [
       "Bash(cargo test:*)",
       "Bash(cargo clippy:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(pnpm lint:*)"
     ]
   },
   "outputStyle": "Explanatory"

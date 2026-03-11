@@ -4,6 +4,8 @@ import { Socket } from 'socket.io-client';
 import { getSocketIoInfo, connectToNamespace } from './lib/socket';
 import ConnectionsPage from './pages/ConnectionsPage';
 import AssetsPage from './pages/AssetsPage';
+import DesignsPage from './pages/DesignsPage';
+import DesignEditorPage from './pages/DesignEditorPage';
 import './App.css';
 
 interface PongResponse {
@@ -68,6 +70,7 @@ function App() {
         <NavLink to="/">Home</NavLink>
         <NavLink to="/connections">Connections</NavLink>
         <NavLink to="/assets">Assets</NavLink>
+        <NavLink to="/designs">Designs</NavLink>
         <div className="nav-spacer" />
         <div className="status-pill">
           <span className="status-dot" style={{ backgroundColor: statusColor }} />
@@ -80,6 +83,8 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/connections" element={<ConnectionsPage />} />
           <Route path="/assets" element={<AssetsPage />} />
+          <Route path="/designs" element={<DesignsPage />} />
+          <Route path="/designs/:id/edit" element={<DesignEditorPage />} />
         </Routes>
       </main>
 

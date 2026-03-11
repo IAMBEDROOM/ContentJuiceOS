@@ -1,0 +1,18 @@
+/* ── Editor Canvas Container ──────────────────────────────────────── */
+
+.editor-canvas-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background-color: #08090e;
+  cursor: default;
+}
+
+.editor-canvas-container.panning {
+  cursor: grabbing;
+}
+
+.editor-canvas-container.pan-ready {
+  cursor: grab;
+}
