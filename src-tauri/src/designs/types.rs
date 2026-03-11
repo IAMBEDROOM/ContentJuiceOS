@@ -370,6 +370,10 @@ pub struct Design {
     pub design_type: DesignType,
     pub config: DesignTree,
     pub thumbnail: Option<String>,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    #[serde(default)]
+    pub description: String,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -568,6 +572,8 @@ mod tests {
             "id": "aae8400-e29b-41d4-a716-446655440000",
             "name": "Test Alert Design",
             "type": "alert",
+            "tags": ["alert", "custom"],
+            "description": "My custom alert for new followers",
             "config": {
                 "schemaVersion": 1,
                 "canvas": { "width": 1920, "height": 1080 },
@@ -631,6 +637,8 @@ mod tests {
         let design: Design = serde_json::from_value(design_json.clone()).unwrap();
         assert_eq!(design.name, "Test Alert Design");
         assert_eq!(design.design_type, DesignType::Alert);
+        assert_eq!(design.tags, vec!["alert", "custom"]);
+        assert_eq!(design.description, "My custom alert for new followers");
         assert_eq!(design.config.schema_version, 1);
         assert_eq!(design.config.elements.len(), 5);
 

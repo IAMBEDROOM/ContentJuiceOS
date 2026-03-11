@@ -202,6 +202,8 @@ export const DesignSchema = z.object({
   type: DesignTypeSchema,
   config: DesignTreeSchema,
   thumbnail: z.string().optional(),
+  tags: z.array(z.string()).default([]),
+  description: z.string().default(''),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

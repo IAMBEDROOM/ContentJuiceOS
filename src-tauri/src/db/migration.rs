@@ -133,6 +133,12 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp ON audit_log(timestamp);
 CREATE INDEX IF NOT EXISTS idx_audit_log_event_type ON audit_log(event_type);
 ";
 
+const MIGRATION_V5_DESIGN_SCHEMA_REFINEMENT: &str = "
+-- Add tags and description columns to designs table
+ALTER TABLE designs ADD COLUMN tags TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE designs ADD COLUMN description TEXT NOT NULL DEFAULT '';
+";
+
 /// Returns all migrations in version order. New migrations are appended here by future tasks.
 pub fn all_migrations() -> &'static [Migration] {
     &[
@@ -155,6 +161,11 @@ pub fn all_migrations() -> &'static [Migration] {
             version: 4,
             name: "audit_log",
             sql: MIGRATION_V4_AUDIT_LOG,
+        },
+        Migration {
+            version: 5,
+            name: "design_schema_refinement",
+            sql: MIGRATION_V5_DESIGN_SCHEMA_REFINEMENT,
         },
     ]
 }
@@ -261,7 +272,7 @@ mod tests {
         let count: u32 = conn
             .query_row("SELECT COUNT(*) FROM _migrations", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(count, 4);
+        assert_eq!(count, 5);
     }
 
     #[test]
@@ -273,7 +284,7 @@ mod tests {
         let count: u32 = conn
             .query_row("SELECT COUNT(*) FROM _migrations", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(count, 4);
+        assert_eq!(count, 5);
     }
 
     #[test]
@@ -284,7 +295,7 @@ mod tests {
         let max_version: u32 = conn
             .query_row("SELECT MAX(version) FROM _migrations", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(max_version, 4);
+        assert_eq!(max_version, 5);
 
         // Running again should be a no-op
         run_migrations(&conn).unwrap();
@@ -292,7 +303,7 @@ mod tests {
         let count: u32 = conn
             .query_row("SELECT COUNT(*) FROM _migrations", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(count, 4);
+        assert_eq!(count, 5);
     }
 
     #[test]
@@ -437,5 +448,70 @@ mod tests {
             result.is_err(),
             "Unique constraint should reject duplicate (cache_type, cache_key, platform) tuple"
         );
+    }
+
+    #[test]
+    fn v5_adds_tags_and_description_to_designs() {
+        let conn = Connection::open_in_memory().unwrap();
+        run_migrations(&conn).unwrap();
+
+        // Insert a design with the new columns
+        conn.execute(
+            "INSERT INTO designs (id, name, type, tags, description) VALUES ('d1', 'Test', 'alert', '[\"tag1\",\"tag2\"]', 'A test design')",
+            [],
+        )
+        .unwrap();
+
+        let (tags, description): (String, String) = conn
+            .query_row(
+                "SELECT tags, description FROM designs WHERE id = 'd1'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(tags, "[\"tag1\",\"tag2\"]");
+        assert_eq!(description, "A test design");
+    }
+
+    #[test]
+    fn v5_defaults_applied_to_existing_designs() {
+        let conn = Connection::open_in_memory().unwrap();
+        // Apply only V1-V4 first by manually running the schema
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS _migrations (
+                id         INTEGER PRIMARY KEY,
+                version    INTEGER NOT NULL UNIQUE,
+                name       TEXT NOT NULL,
+                applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );",
+        )
+        .unwrap();
+        // Run V1 core schema to create the designs table
+        conn.execute_batch(super::MIGRATION_V1_CORE_SCHEMA).unwrap();
+        conn.execute("INSERT INTO _migrations (version, name) VALUES (1, 'core_schema')", []).unwrap();
+        conn.execute("INSERT INTO _migrations (version, name) VALUES (2, 'secure_credentials')", []).unwrap();
+        conn.execute("INSERT INTO _migrations (version, name) VALUES (3, 'platform_unique_index')", []).unwrap();
+        conn.execute("INSERT INTO _migrations (version, name) VALUES (4, 'audit_log')", []).unwrap();
+
+        // Insert a design before V5 migration
+        conn.execute(
+            "INSERT INTO designs (id, name, type) VALUES ('d0', 'Old Design', 'overlay')",
+            [],
+        )
+        .unwrap();
+
+        // Now run remaining migrations (V5)
+        run_migrations(&conn).unwrap();
+
+        // Existing row should have defaults
+        let (tags, description): (String, String) = conn
+            .query_row(
+                "SELECT tags, description FROM designs WHERE id = 'd0'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(tags, "[]");
+        assert_eq!(description, "");
     }
 }
