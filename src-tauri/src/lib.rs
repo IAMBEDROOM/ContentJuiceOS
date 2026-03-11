@@ -4,6 +4,7 @@ mod backup;
 mod cache;
 mod credentials;
 mod db;
+mod designs;
 mod ffmpeg;
 mod platform;
 mod rate_limiter;

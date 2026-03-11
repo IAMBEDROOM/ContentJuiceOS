@@ -88,6 +88,22 @@ const BaseElementSchema = z.object({
   sound: SoundTriggerSchema.optional(),
 });
 
+// ── Shared Visual Properties ─────────────────────────────────────────
+
+export const ShadowSchema = z.object({
+  color: z.string(),
+  offsetX: z.number(),
+  offsetY: z.number(),
+  blur: z.number().nonnegative(),
+});
+export type Shadow = z.infer<typeof ShadowSchema>;
+
+export const BorderSchema = z.object({
+  color: z.string(),
+  width: z.number().nonnegative(),
+});
+export type Border = z.infer<typeof BorderSchema>;
+
 // ── Concrete Element Types ───────────────────────────────────────────
 
 export const TextElementSchema = BaseElementSchema.extend({
@@ -99,15 +115,8 @@ export const TextElementSchema = BaseElementSchema.extend({
   color: z.string().default('#FFFFFF'),
   textAlign: z.enum(['left', 'center', 'right']).default('left'),
   lineHeight: z.number().positive().default(1.4),
-  stroke: z.object({ color: z.string(), width: z.number().nonnegative() }).optional(),
-  shadow: z
-    .object({
-      color: z.string(),
-      offsetX: z.number(),
-      offsetY: z.number(),
-      blur: z.number().nonnegative(),
-    })
-    .optional(),
+  stroke: BorderSchema.optional(),
+  shadow: ShadowSchema.optional(),
 });
 export type TextElement = z.infer<typeof TextElementSchema>;
 
@@ -116,15 +125,8 @@ export const ImageElementSchema = BaseElementSchema.extend({
   assetId: z.string().uuid(),
   fitMode: z.enum(['contain', 'cover', 'fill', 'none']).default('contain'),
   borderRadius: z.number().nonnegative().default(0),
-  border: z.object({ color: z.string(), width: z.number().nonnegative() }).optional(),
-  shadow: z
-    .object({
-      color: z.string(),
-      offsetX: z.number(),
-      offsetY: z.number(),
-      blur: z.number().nonnegative(),
-    })
-    .optional(),
+  border: BorderSchema.optional(),
+  shadow: ShadowSchema.optional(),
 });
 export type ImageElement = z.infer<typeof ImageElementSchema>;
 
@@ -144,24 +146,26 @@ export const ShapeElementSchema = BaseElementSchema.extend({
   strokeColor: z.string().optional(),
   strokeWidth: z.number().nonnegative().default(0),
   borderRadius: z.number().nonnegative().default(0),
-  shadow: z
-    .object({
-      color: z.string(),
-      offsetX: z.number(),
-      offsetY: z.number(),
-      blur: z.number().nonnegative(),
-    })
-    .optional(),
+  shadow: ShadowSchema.optional(),
 });
 export type ShapeElement = z.infer<typeof ShapeElementSchema>;
 
 export const AnimationElementSchema = BaseElementSchema.extend({
   elementType: z.literal('animation'),
   assetId: z.string().uuid(),
+  fitMode: z.enum(['contain', 'cover', 'fill', 'none']).default('contain'),
   playOnLoad: z.boolean().default(true),
   loopAnimation: z.boolean().default(true),
 });
 export type AnimationElement = z.infer<typeof AnimationElementSchema>;
+
+export const SoundElementSchema = BaseElementSchema.extend({
+  elementType: z.literal('sound'),
+  assetId: z.string().uuid(),
+  volume: z.number().min(0).max(1).default(1),
+  playMode: z.enum(['on_show', 'loop']).default('on_show'),
+});
+export type SoundElement = z.infer<typeof SoundElementSchema>;
 
 // ── Design Element Union ─────────────────────────────────────────────
 
@@ -170,6 +174,7 @@ export const DesignElementSchema = z.discriminatedUnion('elementType', [
   ImageElementSchema,
   ShapeElementSchema,
   AnimationElementSchema,
+  SoundElementSchema,
 ]);
 export type DesignElement = z.infer<typeof DesignElementSchema>;
 
@@ -182,6 +187,7 @@ export const CanvasSizeSchema = z.object({
 export type CanvasSize = z.infer<typeof CanvasSizeSchema>;
 
 export const DesignTreeSchema = z.object({
+  schemaVersion: z.number().int().positive().default(1),
   canvas: CanvasSizeSchema.default({ width: 1920, height: 1080 }),
   backgroundColor: z.string().default('#0A0D14'),
   elements: z.array(DesignElementSchema).default([]),
