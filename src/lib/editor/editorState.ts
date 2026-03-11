@@ -22,6 +22,7 @@ export const initialEditorState: EditorState = {
   gridSize: 20,
   gridVisible: true,
   snapEnabled: true,
+  selectedElementIds: [],
 };
 
 // ── Reducer ─────────────────────────────────────────────────────────
@@ -46,6 +47,60 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, snapEnabled: !state.snapEnabled };
     case 'UPDATE_DESIGN_TREE':
       return { ...state, designTree: action.designTree };
+    case 'SELECT_ELEMENTS': {
+      const selectable = action.ids.filter((id) => {
+        const el = state.designTree.elements.find((e) => e.id === id);
+        return el && !el.locked && el.elementType !== 'sound';
+      });
+      return { ...state, selectedElementIds: selectable };
+    }
+    case 'CLEAR_SELECTION':
+      return { ...state, selectedElementIds: [] };
+    case 'ADD_TO_SELECTION': {
+      const newIds = action.ids.filter((id) => {
+        const el = state.designTree.elements.find((e) => e.id === id);
+        return el && !el.locked && el.elementType !== 'sound' && !state.selectedElementIds.includes(id);
+      });
+      return { ...state, selectedElementIds: [...state.selectedElementIds, ...newIds] };
+    }
+    case 'REMOVE_FROM_SELECTION':
+      return {
+        ...state,
+        selectedElementIds: state.selectedElementIds.filter((id) => !action.ids.includes(id)),
+      };
+    case 'UPDATE_ELEMENT':
+      return {
+        ...state,
+        designTree: {
+          ...state.designTree,
+          elements: state.designTree.elements.map((el) =>
+            el.id === action.id ? { ...el, ...action.changes } : el,
+          ),
+        },
+      };
+    case 'UPDATE_ELEMENT_PROPERTIES':
+      return {
+        ...state,
+        designTree: {
+          ...state.designTree,
+          elements: state.designTree.elements.map((el) =>
+            el.id === action.id ? { ...el, ...action.changes } : el,
+          ) as typeof state.designTree.elements,
+        },
+      };
+    case 'UPDATE_ELEMENTS': {
+      const updateMap = new Map(action.updates.map((u) => [u.id, u.changes]));
+      return {
+        ...state,
+        designTree: {
+          ...state.designTree,
+          elements: state.designTree.elements.map((el) => {
+            const changes = updateMap.get(el.id);
+            return changes ? { ...el, ...changes } : el;
+          }),
+        },
+      };
+    }
     default:
       return state;
   }

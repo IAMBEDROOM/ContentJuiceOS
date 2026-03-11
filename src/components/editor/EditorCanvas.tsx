@@ -3,8 +3,13 @@ import { Stage, Layer, Rect } from 'react-konva';
 import type Konva from 'konva';
 import { useEditor } from '../../lib/editor/editorState';
 import { calculateFitZoom, calculateCenterOffset, zoomAtPoint } from '../../lib/editor/viewport';
+import { useElementRefs } from '../../lib/editor/useElementRefs';
+import { SelectionContext } from '../../lib/editor/SelectionContext';
 import EditorGrid from './EditorGrid';
 import ElementRenderer from './elements/ElementRenderer';
+import SelectionTransformer from './SelectionTransformer';
+import MarqueeRect from './MarqueeSelection';
+import { useMarquee } from '../../lib/editor/useMarquee';
 import './EditorCanvas.css';
 
 const MIN_ZOOM = 0.1;
@@ -13,7 +18,7 @@ const ZOOM_SENSITIVITY = 0.001;
 
 export default function EditorCanvas() {
   const { state, dispatch } = useEditor();
-  const { designTree, zoom, panOffset } = state;
+  const { designTree, zoom, panOffset, selectedElementIds } = state;
   const { canvas } = designTree;
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -24,6 +29,12 @@ export default function EditorCanvas() {
   const [isPanning, setIsPanning] = useState(false);
   const [spaceHeld, setSpaceHeld] = useState(false);
   const lastPointerPos = useRef<{ x: number; y: number } | null>(null);
+
+  // Element refs for Transformer attachment
+  const { registerRef, getNodes } = useElementRefs();
+
+  // Marquee state
+  const [isMarqueeSelecting, setIsMarqueeSelecting] = useState(false);
 
   // ── ResizeObserver ──────────────────────────────────────────────
   useEffect(() => {
@@ -73,44 +84,128 @@ export default function EditorCanvas() {
     [zoom, panOffset, dispatch],
   );
 
+  // ── Selection handler (passed via context) ─────────────────────
+  const onElementMouseDown = useCallback(
+    (id: string, e: Konva.KonvaEventObject<MouseEvent>) => {
+      const element = designTree.elements.find((el) => el.id === id);
+      if (!element || element.locked) return;
+
+      // Stop event from reaching stage (prevents deselect / marquee)
+      e.cancelBubble = true;
+
+      if (e.evt.shiftKey) {
+        if (selectedElementIds.includes(id)) {
+          dispatch({ type: 'REMOVE_FROM_SELECTION', ids: [id] });
+        } else {
+          dispatch({ type: 'ADD_TO_SELECTION', ids: [id] });
+        }
+      } else {
+        // If already selected, do nothing (allow drag to start)
+        if (!selectedElementIds.includes(id)) {
+          dispatch({ type: 'SELECT_ELEMENTS', ids: [id] });
+        }
+      }
+    },
+    [designTree.elements, selectedElementIds, dispatch],
+  );
+
+  // ── Marquee selection ─────────────────────────────────────────
+  const {
+    marqueeRect,
+    isMarqueeActive,
+    handleStageMouseDown: marqueeMouseDown,
+    handleStageMouseMove: marqueeMouseMove,
+    handleStageMouseUp: marqueeMouseUp,
+  } = useMarquee({
+    zoom,
+    panOffset,
+    elements: designTree.elements,
+    onSelect: (ids, additive) => {
+      if (additive) {
+        dispatch({ type: 'ADD_TO_SELECTION', ids });
+      } else {
+        dispatch({ type: 'SELECT_ELEMENTS', ids });
+      }
+    },
+    onMarqueeActiveChange: setIsMarqueeSelecting,
+  });
+
   // ── Pan (middle-mouse + space+drag) ───────────────────────────
   const handleMouseDown = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
       const isMiddle = e.evt.button === 1;
       const isSpaceLeft = spaceHeld && e.evt.button === 0;
-      if (!isMiddle && !isSpaceLeft) return;
 
-      e.evt.preventDefault();
-      setIsPanning(true);
-      lastPointerPos.current = { x: e.evt.clientX, y: e.evt.clientY };
+      if (isMiddle || isSpaceLeft) {
+        e.evt.preventDefault();
+        setIsPanning(true);
+        lastPointerPos.current = { x: e.evt.clientX, y: e.evt.clientY };
+        return;
+      }
+
+      // Left-click on empty canvas area
+      if (e.evt.button === 0 && e.target === stageRef.current) {
+        // Start marquee tracking (actual marquee activates after threshold)
+        marqueeMouseDown(e);
+      }
     },
-    [spaceHeld],
+    [spaceHeld, marqueeMouseDown],
   );
 
   const handleMouseMove = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
-      if (!isPanning || !lastPointerPos.current) return;
+      if (isPanning && lastPointerPos.current) {
+        const dx = e.evt.clientX - lastPointerPos.current.x;
+        const dy = e.evt.clientY - lastPointerPos.current.y;
+        lastPointerPos.current = { x: e.evt.clientX, y: e.evt.clientY };
+        dispatch({ type: 'SET_PAN', offset: { x: panOffset.x + dx, y: panOffset.y + dy } });
+        return;
+      }
 
-      const dx = e.evt.clientX - lastPointerPos.current.x;
-      const dy = e.evt.clientY - lastPointerPos.current.y;
-      lastPointerPos.current = { x: e.evt.clientX, y: e.evt.clientY };
-
-      dispatch({ type: 'SET_PAN', offset: { x: panOffset.x + dx, y: panOffset.y + dy } });
+      marqueeMouseMove(e);
     },
-    [isPanning, panOffset, dispatch],
+    [isPanning, panOffset, dispatch, marqueeMouseMove],
   );
 
-  const handleMouseUp = useCallback(() => {
-    setIsPanning(false);
-    lastPointerPos.current = null;
-  }, []);
+  const handleMouseUp = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      if (isPanning) {
+        setIsPanning(false);
+        lastPointerPos.current = null;
+        return;
+      }
 
-  // ── Space key tracking ────────────────────────────────────────
+      if (isMarqueeActive) {
+        marqueeMouseUp(e);
+        return;
+      }
+
+      // Click on empty canvas without drag → clear selection
+      if (e.target === stageRef.current) {
+        dispatch({ type: 'CLEAR_SELECTION' });
+      }
+
+      marqueeMouseUp(e);
+    },
+    [isPanning, isMarqueeActive, dispatch, marqueeMouseUp],
+  );
+
+  // ── Space key tracking + keyboard shortcuts ────────────────────
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' && !e.repeat) {
         e.preventDefault();
         setSpaceHeld(true);
+      }
+      if (e.code === 'Escape') {
+        dispatch({ type: 'CLEAR_SELECTION' });
+      }
+      if (e.code === 'KeyA' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        const allIds = designTree.elements
+          .filter((el) => el.visible && !el.locked && el.elementType !== 'sound')
+          .map((el) => el.id);
+        dispatch({ type: 'SELECT_ELEMENTS', ids: allIds });
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -127,7 +222,7 @@ export default function EditorCanvas() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, []);
+  }, [designTree.elements, dispatch]);
 
   // ── Sorted elements ───────────────────────────────────────────
   const sortedElements = useMemo(
@@ -135,8 +230,20 @@ export default function EditorCanvas() {
     [designTree.elements],
   );
 
+  // ── Selection context value ───────────────────────────────────
+  const selectionContextValue = useMemo(
+    () => ({ selectedElementIds, registerRef, onElementMouseDown }),
+    [selectedElementIds, registerRef, onElementMouseDown],
+  );
+
   // ── Cursor class ──────────────────────────────────────────────
-  const cursorClass = isPanning ? 'panning' : spaceHeld ? 'pan-ready' : '';
+  const cursorClass = isPanning
+    ? 'panning'
+    : spaceHeld
+      ? 'pan-ready'
+      : isMarqueeSelecting
+        ? 'selecting'
+        : '';
 
   return (
     <div ref={containerRef} className={`editor-canvas-container ${cursorClass}`}>
@@ -169,11 +276,15 @@ export default function EditorCanvas() {
         {/* Layer 1: Grid */}
         <EditorGrid />
 
-        {/* Layer 2: Content */}
+        {/* Layer 2: Content + Transformer + Marquee */}
         <Layer scaleX={zoom} scaleY={zoom} x={panOffset.x} y={panOffset.y}>
-          {sortedElements.map((element) => (
-            <ElementRenderer key={element.id} element={element} />
-          ))}
+          <SelectionContext.Provider value={selectionContextValue}>
+            {sortedElements.map((element) => (
+              <ElementRenderer key={element.id} element={element} />
+            ))}
+            <SelectionTransformer getNodes={getNodes} />
+            {marqueeRect && <MarqueeRect rect={marqueeRect} />}
+          </SelectionContext.Provider>
         </Layer>
       </Stage>
     </div>

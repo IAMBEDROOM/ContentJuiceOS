@@ -16,3 +16,7 @@
 .editor-canvas-container.pan-ready {
   cursor: grab;
 }
+
+.editor-canvas-container.selecting {
+  cursor: crosshair;
+}

@@ -1,4 +1,4 @@
-import type { Design, DesignTree } from './design';
+import type { Design, DesignElement, DesignTree } from './design';
 
 // ── Viewport ────────────────────────────────────────────────────────
 
@@ -19,6 +19,7 @@ export interface EditorState {
   gridSize: number;
   gridVisible: boolean;
   snapEnabled: boolean;
+  selectedElementIds: string[];
 }
 
 // ── Editor Actions ──────────────────────────────────────────────────
@@ -30,4 +31,11 @@ export type EditorAction =
   | { type: 'TOGGLE_GRID' }
   | { type: 'SET_GRID_SIZE'; size: number }
   | { type: 'TOGGLE_SNAP' }
-  | { type: 'UPDATE_DESIGN_TREE'; designTree: DesignTree };
+  | { type: 'UPDATE_DESIGN_TREE'; designTree: DesignTree }
+  | { type: 'SELECT_ELEMENTS'; ids: string[] }
+  | { type: 'CLEAR_SELECTION' }
+  | { type: 'ADD_TO_SELECTION'; ids: string[] }
+  | { type: 'REMOVE_FROM_SELECTION'; ids: string[] }
+  | { type: 'UPDATE_ELEMENT'; id: string; changes: Partial<Pick<DesignElement, 'position' | 'size' | 'rotation'>> }
+  | { type: 'UPDATE_ELEMENTS'; updates: Array<{ id: string; changes: Partial<Pick<DesignElement, 'position' | 'size' | 'rotation'>> }> }
+  | { type: 'UPDATE_ELEMENT_PROPERTIES'; id: string; changes: Record<string, unknown> };

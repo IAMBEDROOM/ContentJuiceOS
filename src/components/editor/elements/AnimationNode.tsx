@@ -1,13 +1,20 @@
 import { useEffect, useState } from 'react';
 import { Group, Image, Rect, Text } from 'react-konva';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import type Konva from 'konva';
 import type { AnimationElement } from '../../../types/design';
+import { useEditor } from '../../../lib/editor/editorState';
+import { computeDragEndValues, computeDragMoveSnap, computeTransformEndValues } from '../../../lib/editor/transformHandlers';
 
 interface AnimationNodeProps {
   element: AnimationElement;
+  isSelected: boolean;
+  registerRef: (id: string, node: Konva.Node | null) => void;
+  onSelect: (id: string, e: Konva.KonvaEventObject<MouseEvent>) => void;
 }
 
-export default function AnimationNode({ element }: AnimationNodeProps) {
+export default function AnimationNode({ element, isSelected, registerRef, onSelect }: AnimationNodeProps) {
+  const { state, dispatch } = useEditor();
   const [image, setImage] = useState<HTMLImageElement | null>(null);
 
   useEffect(() => {
@@ -22,13 +29,27 @@ export default function AnimationNode({ element }: AnimationNodeProps) {
 
   return (
     <Group
+      ref={(node) => registerRef(element.id, node)}
       x={element.position.x}
       y={element.position.y}
+      width={element.size.width}
+      height={element.size.height}
       rotation={element.rotation}
       offsetX={element.size.width / 2}
       offsetY={element.size.height / 2}
       opacity={element.opacity}
-      listening={false}
+      listening={!element.locked}
+      draggable={isSelected && !element.locked}
+      onMouseDown={(e) => onSelect(element.id, e)}
+      onDragMove={(e) => computeDragMoveSnap(e.target, state.snapEnabled, state.gridSize)}
+      onDragEnd={(e) => {
+        const pos = computeDragEndValues(e.target, state.snapEnabled, state.gridSize);
+        dispatch({ type: 'UPDATE_ELEMENT', id: element.id, changes: { position: pos } });
+      }}
+      onTransformEnd={(e) => {
+        const values = computeTransformEndValues(e.target);
+        dispatch({ type: 'UPDATE_ELEMENT', id: element.id, changes: values });
+      }}
     >
       {image ? (
         <Image

@@ -9,6 +9,7 @@ import {
 } from '../lib/editor/editorState';
 import EditorToolbar from '../components/editor/EditorToolbar';
 import EditorCanvas from '../components/editor/EditorCanvas';
+import PropertiesPanel from '../components/editor/properties/PropertiesPanel';
 import './DesignEditorPage.css';
 
 export default function DesignEditorPage() {
@@ -87,8 +88,11 @@ export default function DesignEditorPage() {
             containerHeight={containerSize.height}
           />
         </div>
-        <div ref={containerRef} className="design-editor-canvas-area">
-          <EditorCanvas />
+        <div className="design-editor-body">
+          <div ref={containerRef} className="design-editor-canvas-area">
+            <EditorCanvas />
+          </div>
+          <PropertiesPanel />
         </div>
       </div>
     </EditorContext.Provider>
