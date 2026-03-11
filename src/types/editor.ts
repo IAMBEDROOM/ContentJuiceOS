@@ -38,4 +38,5 @@ export type EditorAction =
   | { type: 'REMOVE_FROM_SELECTION'; ids: string[] }
   | { type: 'UPDATE_ELEMENT'; id: string; changes: Partial<Pick<DesignElement, 'position' | 'size' | 'rotation'>> }
   | { type: 'UPDATE_ELEMENTS'; updates: Array<{ id: string; changes: Partial<Pick<DesignElement, 'position' | 'size' | 'rotation'>> }> }
-  | { type: 'UPDATE_ELEMENT_PROPERTIES'; id: string; changes: Record<string, unknown> };
+  | { type: 'UPDATE_ELEMENT_PROPERTIES'; id: string; changes: Record<string, unknown> }
+  | { type: 'REORDER_LAYERS'; orderedIds: string[] };

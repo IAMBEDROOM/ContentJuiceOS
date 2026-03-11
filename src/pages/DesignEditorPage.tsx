@@ -9,6 +9,7 @@ import {
 } from '../lib/editor/editorState';
 import EditorToolbar from '../components/editor/EditorToolbar';
 import EditorCanvas from '../components/editor/EditorCanvas';
+import LayerPanel from '../components/editor/layers/LayerPanel';
 import PropertiesPanel from '../components/editor/properties/PropertiesPanel';
 import './DesignEditorPage.css';
 
@@ -89,6 +90,7 @@ export default function DesignEditorPage() {
           />
         </div>
         <div className="design-editor-body">
+          <LayerPanel />
           <div ref={containerRef} className="design-editor-canvas-area">
             <EditorCanvas />
           </div>

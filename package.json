@@ -19,6 +19,9 @@
     "check": "pnpm lint && pnpm format:check && pnpm rust:fmt:check && pnpm rust:clippy"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "konva": "^10.2.0",

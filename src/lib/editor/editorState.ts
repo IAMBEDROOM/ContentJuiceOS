@@ -88,6 +88,20 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
           ) as typeof state.designTree.elements,
         },
       };
+    case 'REORDER_LAYERS': {
+      const count = action.orderedIds.length;
+      const orderMap = new Map(action.orderedIds.map((id, i) => [id, count - 1 - i]));
+      return {
+        ...state,
+        designTree: {
+          ...state.designTree,
+          elements: state.designTree.elements.map((el) => {
+            const newOrder = orderMap.get(el.id);
+            return newOrder !== undefined ? { ...el, layerOrder: newOrder } : el;
+          }) as typeof state.designTree.elements,
+        },
+      };
+    }
     case 'UPDATE_ELEMENTS': {
       const updateMap = new Map(action.updates.map((u) => [u.id, u.changes]));
       return {
