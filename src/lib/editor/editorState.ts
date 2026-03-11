@@ -47,6 +47,15 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, snapEnabled: !state.snapEnabled };
     case 'UPDATE_DESIGN_TREE':
       return { ...state, designTree: action.designTree };
+    case 'ADD_ELEMENT':
+      return {
+        ...state,
+        designTree: {
+          ...state.designTree,
+          elements: [...state.designTree.elements, action.element],
+        },
+        selectedElementIds: [action.element.id],
+      };
     case 'SELECT_ELEMENTS': {
       const selectable = action.ids.filter((id) => {
         const el = state.designTree.elements.find((e) => e.id === id);

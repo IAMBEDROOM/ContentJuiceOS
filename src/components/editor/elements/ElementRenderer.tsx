@@ -11,7 +11,7 @@ interface ElementRendererProps {
 }
 
 export default function ElementRenderer({ element }: ElementRendererProps) {
-  const { selectedElementIds, registerRef, onElementMouseDown } = useSelection();
+  const { selectedElementIds, registerRef, onElementMouseDown, onElementDblClick, editingTextId } = useSelection();
   const isSelected = selectedElementIds.includes(element.id);
 
   // Sound elements stay non-interactive on canvas
@@ -27,7 +27,7 @@ export default function ElementRenderer({ element }: ElementRendererProps) {
 
   switch (element.elementType) {
     case 'text':
-      return <TextNode element={element} {...interactionProps} />;
+      return <TextNode element={element} {...interactionProps} onDblClick={onElementDblClick} editingTextId={editingTextId} />;
     case 'image':
       return <ImageNode element={element} {...interactionProps} />;
     case 'shape':

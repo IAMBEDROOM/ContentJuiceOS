@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { useEditor } from '../../lib/editor/editorState';
 import { calculateFitZoom, calculateCenterOffset } from '../../lib/editor/viewport';
 import { updateDesign } from '../../lib/designs';
+import { createTextElement } from '../../lib/editor/elementFactories';
 import './EditorToolbar.css';
 
 interface EditorToolbarProps {
@@ -49,6 +50,12 @@ export default function EditorToolbar({ containerWidth, containerHeight }: Edito
     }
   }, [design, designTree]);
 
+  const handleAddText = useCallback(() => {
+    const nextLayerOrder = Math.max(0, ...designTree.elements.map((e) => e.layerOrder)) + 1;
+    const element = createTextElement(designTree.canvas.width, designTree.canvas.height, nextLayerOrder);
+    dispatch({ type: 'ADD_ELEMENT', element });
+  }, [designTree, dispatch]);
+
   const handleGridSizeChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = parseInt(e.target.value, 10);
@@ -60,6 +67,13 @@ export default function EditorToolbar({ containerWidth, containerHeight }: Edito
   return (
     <div className="editor-toolbar">
       <span className="design-name">{design?.name ?? 'Untitled'}</span>
+
+      {/* Element creation */}
+      <div className="toolbar-group">
+        <button onClick={handleAddText} title="Add Text Element">T</button>
+      </div>
+
+      <div className="toolbar-divider" />
 
       {/* Zoom controls */}
       <div className="toolbar-group">

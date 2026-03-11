@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { Stage, Layer, Rect } from 'react-konva';
 import type Konva from 'konva';
+import type { TextElement } from '../../types/design';
 import { useEditor } from '../../lib/editor/editorState';
 import { calculateFitZoom, calculateCenterOffset, zoomAtPoint } from '../../lib/editor/viewport';
 import { useElementRefs } from '../../lib/editor/useElementRefs';
@@ -9,6 +10,7 @@ import EditorGrid from './EditorGrid';
 import ElementRenderer from './elements/ElementRenderer';
 import SelectionTransformer from './SelectionTransformer';
 import MarqueeRect from './MarqueeSelection';
+import InlineTextEditor from './InlineTextEditor';
 import { useMarquee } from '../../lib/editor/useMarquee';
 import './EditorCanvas.css';
 
@@ -35,6 +37,18 @@ export default function EditorCanvas() {
 
   // Marquee state
   const [isMarqueeSelecting, setIsMarqueeSelecting] = useState(false);
+
+  // Inline text editing state
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
+
+  // Ref mirrors editingTextId so event handlers always see the latest value
+  const editingTextIdRef = useRef<string | null>(null);
+
+  const closeInlineEditor = useCallback(() => {
+    // Setting state to null triggers the textarea's onBlur, which commits the text
+    setEditingTextId(null);
+    editingTextIdRef.current = null;
+  }, []);
 
   // ── ResizeObserver ──────────────────────────────────────────────
   useEffect(() => {
@@ -78,11 +92,41 @@ export default function EditorCanvas() {
       const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * (1 + direction * ZOOM_SENSITIVITY * 300)));
       const newOffset = zoomAtPoint(zoom, newZoom, pointer.x, pointer.y, panOffset);
 
+      if (editingTextIdRef.current) closeInlineEditor();
       dispatch({ type: 'SET_ZOOM', zoom: newZoom });
       dispatch({ type: 'SET_PAN', offset: newOffset });
     },
-    [zoom, panOffset, dispatch],
+    [zoom, panOffset, dispatch, closeInlineEditor],
   );
+
+  // ── Double-click handler for inline text editing ────────────────
+  const onElementDblClick = useCallback(
+    (id: string) => {
+      const el = designTree.elements.find((e) => e.id === id);
+      if (el && el.elementType === 'text' && !el.locked) {
+        setEditingTextId(id);
+        editingTextIdRef.current = id;
+      }
+    },
+    [designTree.elements],
+  );
+
+  // ── Commit inline text edit ─────────────────────────────────────
+  const commitTextEdit = useCallback(
+    (text: string) => {
+      if (editingTextIdRef.current) {
+        dispatch({ type: 'UPDATE_ELEMENT_PROPERTIES', id: editingTextIdRef.current, changes: { text } });
+      }
+      setEditingTextId(null);
+      editingTextIdRef.current = null;
+    },
+    [dispatch],
+  );
+
+  const cancelTextEdit = useCallback(() => {
+    setEditingTextId(null);
+    editingTextIdRef.current = null;
+  }, []);
 
   // ── Selection handler (passed via context) ─────────────────────
   const onElementMouseDown = useCallback(
@@ -138,6 +182,7 @@ export default function EditorCanvas() {
 
       if (isMiddle || isSpaceLeft) {
         e.evt.preventDefault();
+        if (editingTextIdRef.current) closeInlineEditor();
         setIsPanning(true);
         lastPointerPos.current = { x: e.evt.clientX, y: e.evt.clientY };
         return;
@@ -149,7 +194,7 @@ export default function EditorCanvas() {
         marqueeMouseDown(e);
       }
     },
-    [spaceHeld, marqueeMouseDown],
+    [spaceHeld, marqueeMouseDown, closeInlineEditor],
   );
 
   const handleMouseMove = useCallback(
@@ -193,6 +238,9 @@ export default function EditorCanvas() {
   // ── Space key tracking + keyboard shortcuts ────────────────────
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // Don't handle shortcuts when editing text inline
+      if (editingTextId) return;
+
       if (e.code === 'Space' && !e.repeat) {
         e.preventDefault();
         setSpaceHeld(true);
@@ -222,7 +270,7 @@ export default function EditorCanvas() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [designTree.elements, dispatch]);
+  }, [designTree.elements, dispatch, editingTextId]);
 
   // ── Sorted elements ───────────────────────────────────────────
   const sortedElements = useMemo(
@@ -232,9 +280,14 @@ export default function EditorCanvas() {
 
   // ── Selection context value ───────────────────────────────────
   const selectionContextValue = useMemo(
-    () => ({ selectedElementIds, registerRef, onElementMouseDown }),
-    [selectedElementIds, registerRef, onElementMouseDown],
+    () => ({ selectedElementIds, registerRef, onElementMouseDown, onElementDblClick, editingTextId }),
+    [selectedElementIds, registerRef, onElementMouseDown, onElementDblClick, editingTextId],
   );
+
+  // ── Find the element being edited ─────────────────────────────
+  const editingElement = editingTextId
+    ? (designTree.elements.find((e) => e.id === editingTextId) as TextElement | undefined)
+    : undefined;
 
   // ── Cursor class ──────────────────────────────────────────────
   const cursorClass = isPanning
@@ -287,6 +340,16 @@ export default function EditorCanvas() {
           </SelectionContext.Provider>
         </Layer>
       </Stage>
+
+      {editingElement && (
+        <InlineTextEditor
+          element={editingElement}
+          zoom={zoom}
+          panOffset={panOffset}
+          onCommit={commitTextEdit}
+          onCancel={cancelTextEdit}
+        />
+      )}
     </div>
   );
 }

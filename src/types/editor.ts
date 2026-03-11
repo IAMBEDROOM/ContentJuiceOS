@@ -39,4 +39,5 @@ export type EditorAction =
   | { type: 'UPDATE_ELEMENT'; id: string; changes: Partial<Pick<DesignElement, 'position' | 'size' | 'rotation'>> }
   | { type: 'UPDATE_ELEMENTS'; updates: Array<{ id: string; changes: Partial<Pick<DesignElement, 'position' | 'size' | 'rotation'>> }> }
   | { type: 'UPDATE_ELEMENT_PROPERTIES'; id: string; changes: Record<string, unknown> }
-  | { type: 'REORDER_LAYERS'; orderedIds: string[] };
+  | { type: 'REORDER_LAYERS'; orderedIds: string[] }
+  | { type: 'ADD_ELEMENT'; element: DesignElement };

@@ -9,12 +9,16 @@ interface TextNodeProps {
   isSelected: boolean;
   registerRef: (id: string, node: Konva.Node | null) => void;
   onSelect: (id: string, e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onDblClick?: (id: string) => void;
+  editingTextId?: string | null;
 }
 
-export default function TextNode({ element, isSelected, registerRef, onSelect }: TextNodeProps) {
+export default function TextNode({ element, isSelected, registerRef, onSelect, onDblClick, editingTextId }: TextNodeProps) {
   const { state, dispatch } = useEditor();
 
   if (!element.visible) return null;
+
+  const isEditing = editingTextId === element.id;
 
   return (
     <Text
@@ -41,9 +45,12 @@ export default function TextNode({ element, isSelected, registerRef, onSelect }:
       shadowOffsetY={element.shadow?.offsetY}
       shadowBlur={element.shadow?.blur}
       shadowEnabled={!!element.shadow}
+      visible={!isEditing}
       listening={!element.locked}
       draggable={isSelected && !element.locked}
       onMouseDown={(e) => onSelect(element.id, e)}
+      onDblClick={() => onDblClick?.(element.id)}
+      onDblTap={() => onDblClick?.(element.id)}
       onDragMove={(e) => computeDragMoveSnap(e.target, state.snapEnabled, state.gridSize)}
       onDragEnd={(e) => {
         const pos = computeDragEndValues(e.target, state.snapEnabled, state.gridSize);

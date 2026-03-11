@@ -5,6 +5,8 @@ export interface SelectionContextValue {
   selectedElementIds: string[];
   registerRef: (id: string, node: Konva.Node | null) => void;
   onElementMouseDown: (id: string, e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onElementDblClick: (id: string) => void;
+  editingTextId: string | null;
 }
 
 export const SelectionContext = createContext<SelectionContextValue | null>(null);
